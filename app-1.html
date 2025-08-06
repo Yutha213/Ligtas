@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ligtas - Safety Reporting App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom styles */
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        .sidebar.collapsed {
+            width: 70px;
+        }
+        .sidebar.collapsed .sidebar-text {
+            display: none;
+        }
+        .sidebar.collapsed .logo-text {
+            display: none;
+        }
+        .sidebar.collapsed .menu-item {
+            justify-content: center;
+        }
+        .content-area {
+            transition: all 0.3s ease;
+        }
+        .content-area.expanded {
+            margin-left: 70px;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                z-index: 50;
+                transform: translateX(-100%);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .content-area {
+                margin-left: 0 !important;
+            }
+            .mobile-menu-btn {
+                display: block;
+            }
+        }
+        .report-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .photo-preview {
+            max-height: 150px;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <!-- Login Page (shown by default) -->
+    <div id="login-page" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800 p-4">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+            <div class="text-center mb-8">
+                <img src="https://via.placeholder.com/80" alt="Ligtas Logo" class="mx-auto h-20 w-20">
+                <h1 class="text-3xl font-bold text-gray-800 mt-4">LIGTAS</h1>
+                <p class="text-gray-600 mt-2">Safety Reporting System</p>
+            </div>
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" id="username" name="username" required 
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="password" name="password" required 
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <button type="submit" 
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Sign in
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App (hidden by default) -->
+    <div id="app-container" class="hidden">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar bg-blue-800 text-white h-screen fixed top-0 left-0 w-64 overflow-y-auto">
+            <div class="p-4 flex items-center space-x-3">
+                <img src="https://via.placeholder.com/40" alt="Logo" class="h-10 w-10">
+                <span class="logo-text text-xl font-bold">LIGTAS</span>
+                <button id="sidebar-toggle" class="ml-auto text-white focus:outline-none md:hidden">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <nav class="mt-8">
+                <div class="px-4 space-y-1">
+                    <a href="#" class="menu-item flex items-center px-4 py-3 rounded-lg bg-blue-700 text-white">
+                        <i class="fas fa-home"></i>
+                        <span class="sidebar-text ml-3">Dashboard</span>
+                    </a>
+                    <a href="#daily-report" class="menu-item flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 text-white">
+                        <i class="fas fa-clipboard-list"></i>
+                        <span class="sidebar-text ml-3">Daily Report</span>
+                    </a>
+                    <a href="#inspection-report" class="menu-item flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 text-white">
+                        <i class="fas fa-search"></i>
+                        <span class="sidebar-text ml-3">Inspection Report</span>
+                    </a>
+                    <a href="#weekly-report" class="menu-item flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 text-white">
+                        <i class="fas fa-chart-line"></i>
+                        <span class="sidebar-text ml-3">Weekly Report</span>
+                    </a>
+                    <a href="#observation-database" class="menu-item flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 text-white">
+                        <i class="fas fa-database"></i>
+                        <span class="sidebar-text ml-3">Observation Database</span>
+                    </a>
+                    <a href="#inspection-database" class="menu-item flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 text-white">
+                        <i class="fas fa-search"></i>
+                        <span class="sidebar-text ml-3">Inspection Database</span>
+                    </a>
+                    <a href="#weekly-database" class="menu-item flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 text-white">
+                        <i class="fas fa-chart-line"></i>
+                        <span class="sidebar-text ml-3">Weekly Database</span>
+                    </a>
+                    <a href="#admin-panel" id="admin-menu-item" class="menu-item flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 text-white hidden">
+                        <i class="fas fa-user-shield"></i>
+                        <span class="sidebar-text ml-3">Admin Panel</span>
+                    </a>
+                </div>
+            </nav>
+            <div class="absolute bottom-0 w-full p-4">
+                <div class="space-y-4 mb-4">
+                    <button id="logout-btn" class="menu-item flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 text-white w-full">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="sidebar-text ml-3">Logout</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-btn" class="mobile-menu-btn fixed top-4 left-4 z-40 bg-blue-600 text-white p-2 rounded-md shadow-lg md:hidden">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Main Content -->
+        <div id="content-area" class="content-area min-h-screen ml-64">
+            <!-- Top Navigation -->
+            <header class="bg-white shadow-sm">
+                <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                    <h1 class="text-lg font-semibold text-gray-900" id="page-title">Dashboard</h1>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <button id="notifications-btn" class="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none">
+                                <span class="sr-only">Notifications</span>
+                                <i class="fas fa-bell"></i>
+                                <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+                            </button>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <img class="h-8 w-8 rounded-full" src="https://via.placeholder.com/40" alt="User profile">
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-700" id="username-display">John Doe</p>
+                                <p class="text-xs font-medium text-gray-500">Safety Officer</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Sections -->
+            <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+                <!-- Dashboard Section -->
+                <div id="dashboard-section">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                    <i class="fas fa-users text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">Total Manpower</p>
+                                    <p class="text-2xl font-semibold text-gray-900" id="total-manpower">150</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                    <i class="fas fa-clock text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">Total Manhours</p>
+                                    <p class="text-2xl font-semibold text-gray-900" id="total-manhours">1200</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                    <i class="fas fa-exclamation-triangle text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">Open Observations</p>
+                                    <p class="text-2xl font-semibold text-gray-900" id="open-obs-count">12</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                    <i class="fas fa-check-circle text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">Closed Observations</p>
+                                    <p class="text-2xl font-semibold text-gray-900" id="closed-obs-count">24</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Filter -->
+                    <div class="bg-white rounded-lg shadow p-6 mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Dashboard Filter</h2>
+                        <div class="flex flex-wrap gap-4 items-end">
+                            <div>
+                                <label for="filter-month" class="block text-sm font-medium text-gray-700 mb-1">Month</label>
+                                <select id="filter-month" class="border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">All Months</option>
+                                    <option value="1">January</option>
+                                    <option value="2">February</option>
+                                    <option value="3">March</option>
+                                    <option value="4">April</option>
+                                    <option value="5">May</option>
+                                    <option value="6">June</option>
+                                    <option value="7">July</option>
+                                    <option value="8">August</option>
+                                    <option value="9">September</option>
+                                    <option value="10">October</option>
+                                    <option value="11">November</option>
+                                    <option value="12">December</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="filter-year" class="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                                <select id="filter-year" class="border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">All Years</option>
+                                    <option value="2023">2023</option>
+                                    <option value="2024">2024</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button id="apply-filter" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    Apply Filter
+                                </button>
+                                <button id="reset-filter" class="ml-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Reports</h2>
+                            <div class="space-y-4" id="recent-reports-container">
+                                <!-- Recent reports will be loaded here -->
+                            </div>
+                            <button class="mt-4 text-sm font-medium text-blue-600 hover:text-blue-800">View all reports</button>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button onclick="navigateToSection('daily-report')" class="report-card bg-blue-50 hover:bg-blue-100 rounded-lg p-4 text-center transition duration-300 ease-in-out w-full">
+                                    <div class="p-3 rounded-full bg-blue-100 text-blue-600 inline-block">
+                                        <i class="fas fa-plus"></i>
+                                    </div>
+                                    <p class="mt-2 font-medium text-gray-900">New Daily Report</p>
+                                </button>
+                                <button onclick="navigateToSection('inspection-report')" class="report-card bg-purple-50 hover:bg-purple-100 rounded-lg p-4 text-center transition duration-300 ease-in-out w-full">
+                                    <div class="p-3 rounded-full bg-purple-100 text-purple-600 inline-block">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                    <p class="mt-2 font-medium text-gray-900">New Inspection</p>
+                                </button>
+                                <button onclick="navigateToSection('weekly-report')" class="report-card bg-green-50 hover:bg-green-100 rounded-lg p-4 text-center transition duration-300 ease-in-out w-full">
+                                    <div class="p-3 rounded-full bg-green-100 text-green-600 inline-block">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <p class="mt-2 font-medium text-gray-900">Weekly Summary</p>
+                                </button>
+                                <div class="report-card bg-orange-50 hover:bg-orange-100 rounded-lg p-4 text-center transition duration-300 ease-in-out">
+                                    <div class="p-3 rounded-full bg-orange-100 text-orange-600 inline-block">
+                                        <i class="fas fa-file-export"></i>
+                                    </div>
+                                    <p class="mt-2 font-medium text-gray-900">Export Data</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Report Section -->
+                <div id="daily-report-section" class="hidden">
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-lg font-semibold text-gray-900">Daily Observation Report</h2>
+                        </div>
+                        <div class="p-6">
+                            <form id="daily-report-form">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label for="date-observed" class="block text-sm font-medium text-gray-700">Date Observed</label>
+                                        <input type="date" id="date-observed" name="date-observed" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="location" class="block text-sm font-medium text-gray-700">Location</label>
+                                        <input type="text" id="location" name="location" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="observation-type" class="block text-sm font-medium text-gray-700">Observation Type</label>
+                                        <select id="observation-type" name="observation-type" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">Select type</option>
+                                            <option value="unsafe-act">Unsafe Act</option>
+                                            <option value="unsafe-condition">Unsafe Condition</option>
+                                            <option value="nearmiss">Near Miss</option>
+                                            <option value="environment">Environment</option>
+                                            <option value="good-observation">Good Observation</option>
+                                        </select>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                                        <textarea id="description" name="description" rows="3" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="immediate-action" class="block text-sm font-medium text-gray-700">Immediate Action Taken</label>
+                                        <textarea id="immediate-action" name="immediate-action" rows="3" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                    <div>
+                                        <label for="responsible-person" class="block text-sm font-medium text-gray-700">Responsible Person</label>
+                                        <input type="text" id="responsible-person" name="responsible-person" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="reported-by" class="block text-sm font-medium text-gray-700">Reported By</label>
+                                        <input type="text" id="reported-by" name="reported-by" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                                        <select id="status" name="status" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">Select status</option>
+                                            <option value="open">Open</option>
+                                            <option value="closed">Closed</option>
+                                        </select>
+                                    </div>
+                                    <div id="actual-corrective-action-container" class="hidden md:col-span-2">
+                                        <label for="actual-corrective-action" class="block text-sm font-medium text-gray-700">Actual Corrective Action</label>
+                                        <textarea id="actual-corrective-action" name="actual-corrective-action" rows="3" 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                    <div id="date-closed-container" class="hidden">
+                                        <label for="date-closed" class="block text-sm font-medium text-gray-700">Date Closed</label>
+                                        <input type="date" id="date-closed" name="date-closed" 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Upload Photo Evidence</label>
+                                        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                            <div class="space-y-1 text-center">
+                                                <div class="flex text-sm text-gray-600">
+                                                    <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                                                        <span>Upload a file</span>
+                                                        <input id="file-upload" name="file-upload" type="file" class="sr-only" accept="image/*">
+                                                    </label>
+                                                    <p class="pl-1">or drag and drop</p>
+                                                </div>
+                                                <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                                            </div>
+                                        </div>
+                                        <div id="photo-preview-container" class="mt-4 hidden">
+                                            <p class="text-sm font-medium text-gray-700 mb-2">Photo Preview:</p>
+                                            <img id="photo-preview" class="photo-preview rounded-md border border-gray-300">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-6 flex justify-between">
+                                    <div>
+                                        <button type="button" onclick="generatePDF('daily-report')" class="bg-gray-100 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Download PDF
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <button type="button" onclick="navigateToDashboard()" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Cancel
+                                        </button>
+                                        <button type="submit" name="submit_daily_report" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Submit Report
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inspection Report Section -->
+                <div id="inspection-report-section" class="hidden">
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-lg font-semibold text-gray-900">Inspection Report</h2>
+                        </div>
+                        <div class="p-6">
+                            <form id="inspection-report-form">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label for="inspection-date" class="block text-sm font-medium text-gray-700">Inspection Date</label>
+                                        <input type="date" id="inspection-date" name="inspection-date" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="inspection-location" class="block text-sm font-medium text-gray-700">Location</label>
+                                        <input type="text" id="inspection-location" name="inspection-location" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Inspection Type</label>
+                                        <div class="mt-2 space-y-2">
+                                            <div class="flex items-center">
+                                                <input id="ppe" name="inspection-type" type="radio" value="ppe" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
+                                                <label for="ppe" class="ml-3 block text-sm font-medium text-gray-700">PPE Inspection</label>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input id="workplace" name="inspection-type" type="radio" value="workplace" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
+                                                <label for="workplace" class="ml-3 block text-sm font-medium text-gray-700">Workplace Inspection</label>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input id="equipment" name="inspection-type" type="radio" value="equipment" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
+                                                <label for="equipment" class="ml-3 block text-sm font-medium text-gray-700">Heavy Equipment Inspection</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="inspection-findings" class="block text-sm font-medium text-gray-700">Findings</label>
+                                        <textarea id="inspection-findings" name="inspection-findings" rows="3" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="inspection-recommendations" class="block text-sm font-medium text-gray-700">Recommendations</label>
+                                        <textarea id="inspection-recommendations" name="inspection-recommendations" rows="3" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                    <div>
+                                        <label for="inspected-by" class="block text-sm font-medium text-gray-700">Inspected By</label>
+                                        <input type="text" id="inspected-by" name="inspected-by" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="inspection-status" class="block text-sm font-medium text-gray-700">Status</label>
+                                        <select id="inspection-status" name="inspection-status" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">Select status</option>
+                                            <option value="satisfactory">Satisfactory</option>
+                                            <option value="needs-improvement">Needs Improvement</option>
+                                            <option value="unsatisfactory">Unsatisfactory</option>
+                                        </select>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Upload Inspection Photos</label>
+                                        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                            <div class="space-y-1 text-center">
+                                                <div class="flex text-sm text-gray-600">
+                                                    <label for="inspection-file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                                                        <span>Upload files</span>
+                                                        <input id="inspection-file-upload" name="inspection-file-upload" type="file" class="sr-only" accept="image/*" multiple>
+                                                    </label>
+                                                    <p class="pl-1">or drag and drop</p>
+                                                </div>
+                                                <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
+                                            </div>
+                                        </div>
+                                        <div id="inspection-photo-preview-container" class="mt-4 hidden">
+                                            <p class="text-sm font-medium text-gray-700 mb-2">Photo Previews:</p>
+                                            <div id="inspection-photo-previews" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-6 flex justify-end">
+                                    <button type="button" onclick="navigateToDashboard()" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Submit Inspection
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Observation Database Section -->
+                <div id="observation-database-section" class="hidden">
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h2 class="text-lg font-semibold text-gray-900">Observation Database</h2>
+                            <div class="flex flex-wrap gap-2">
+                                <input type="text" id="database-search" placeholder="Search observations..." 
+                                    class="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <div class="flex items-center space-x-2">
+                                    <label class="text-sm">From:</label>
+                                    <input type="date" id="date-from" class="border border-gray-300 rounded-md px-3 py-1 text-sm">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <label class="text-sm">To:</label>
+                                    <input type="date" id="date-to" class="border border-gray-300 rounded-md px-3 py-1 text-sm">
+                                </div>
+                                <button onclick="refreshDatabase()" class="bg-blue-600 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-700">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button onclick="exportObservationsToExcel()" class="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">
+                                    <i class="fas fa-file-excel"></i> Export
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observation #</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corrective Action</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Closed</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="database-table-body" class="bg-white divide-y divide-gray-200">
+                                        <!-- Observations will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-4 flex justify-between items-center">
+                                <div class="text-sm text-gray-500" id="database-count">Showing 0 observations</div>
+                                <div class="flex space-x-2">
+                                    <button onclick="previousPage()" class="bg-gray-200 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Previous</button>
+                                    <span id="database-page" class="px-3 py-1">1</span>
+                                    <button onclick="nextPage()" class="bg-gray-200 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Next</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Observation Modal -->
+                    <div id="edit-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold">Edit Observation</h3>
+                                <button onclick="closeEditModal()" class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <form id="edit-observation-form" class="space-y-4">
+                                <input type="hidden" id="edit-id">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="edit-date" class="block text-sm font-medium text-gray-700">Date</label>
+                                        <input type="date" id="edit-date" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="edit-location" class="block text-sm font-medium text-gray-700">Location</label>
+                                        <input type="text" id="edit-location" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="edit-description" class="block text-sm font-medium text-gray-700">Description</label>
+                                        <textarea id="edit-description" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="edit-corrective-action" class="block text-sm font-medium text-gray-700">Corrective Action</label>
+                                        <textarea id="edit-corrective-action" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                    <div>
+                                        <label for="edit-status" class="block text-sm font-medium text-gray-700">Status</label>
+                                        <select id="edit-status" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="open">Open</option>
+                                            <option value="closed">Closed</option>
+                                        </select>
+                                    </div>
+                                    <div id="edit-closed-date-container" class="hidden">
+                                        <label for="edit-closed-date" class="block text-sm font-medium text-gray-700">Closed Date</label>
+                                        <input type="date" id="edit-closed-date" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="edit-photo-link" class="block text-sm font-medium text-gray-700">Photo Link</label>
+                                        <input type="text" id="edit-photo-link" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                </div>
+                                <div class="flex justify-end space-x-3 pt-4">
+                                    <button type="button" onclick="closeEditModal()" class="bg-gray-200 px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-300">Cancel</button>
+                                    <button type="button" onclick="deleteObservation()" class="bg-red-600 px-4 py-2 rounded-md text-sm font-medium text-white hover:bg-red-700" id="delete-observation-btn">Delete</button>
+                                    <button type="submit" class="bg-blue-600 px-4 py-2 rounded-md text-sm font-medium text-white hover:bg-blue-700">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inspection Database Section -->
+                <div id="inspection-database-section" class="hidden">
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h2 class="text-lg font-semibold text-gray-900">Inspection Database</h2>
+                            <div class="flex flex-wrap gap-2">
+                                <input type="text" id="inspection-search" placeholder="Search inspections..." 
+                                    class="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <div class="flex items-center space-x-2">
+                                    <label class="text-sm">From:</label>
+                                    <input type="date" id="inspection-date-from" class="border border-gray-300 rounded-md px-3 py-1 text-sm">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <label class="text-sm">To:</label>
+                                    <input type="date" id="inspection-date-to" class="border border-gray-300 rounded-md px-3 py-1 text-sm">
+                                </div>
+                                <button onclick="refreshInspectionDatabase()" class="bg-blue-600 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-700">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button onclick="exportInspectionsToExcel()" class="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">
+                                    <i class="fas fa-file-excel"></i> Export
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inspection #</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Findings</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="inspection-table-body" class="bg-white divide-y divide-gray-200">
+                                        <!-- Inspections will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-4 flex justify-between items-center">
+                                <div class="text-sm text-gray-500" id="inspection-count">Showing 0 inspections</div>
+                                <div class="flex space-x-2">
+                                    <button onclick="previousInspectionPage()" class="bg-gray-200 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Previous</button>
+                                    <span id="inspection-page" class="px-3 py-1">1</span>
+                                    <button onclick="nextInspectionPage()" class="bg-gray-200 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Next</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Database Section -->
+                <div id="weekly-database-section" class="hidden">
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h2 class="text-lg font-semibold text-gray-900">Weekly Report Database</h2>
+                            <div class="flex flex-wrap gap-2">
+                                <input type="text" id="weekly-search" placeholder="Search weekly reports..." 
+                                    class="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <div class="flex items-center space-x-2">
+                                    <label class="text-sm">From:</label>
+                                    <input type="date" id="weekly-date-from" class="border border-gray-300 rounded-md px-3 py-1 text-sm">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <label class="text-sm">To:</label>
+                                    <input type="date" id="weekly-date-to" class="border border-gray-300 rounded-md px-3 py-1 text-sm">
+                                </div>
+                                <button onclick="refreshWeeklyDatabase()" class="bg-blue-600 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-700">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button onclick="exportWeeklyToExcel()" class="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">
+                                    <i class="fas fa-file-excel"></i> Export
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report #</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Week Start</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Week End</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observations</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inspections</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manpower</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manhours</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="weekly-table-body" class="bg-white divide-y divide-gray-200">
+                                        <!-- Weekly reports will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-4 flex justify-between items-center">
+                                <div class="text-sm text-gray-500" id="weekly-count">Showing 0 reports</div>
+                                <div class="flex space-x-2">
+                                    <button onclick="previousWeeklyPage()" class="bg-gray-200 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Previous</button>
+                                    <span id="weekly-page" class="px-3 py-1">1</span>
+                                    <button onclick="nextWeeklyPage()" class="bg-gray-200 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Next</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Report Section -->
+                <div id="weekly-report-section" class="hidden">
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-lg font-semibold text-gray-900">Weekly Safety Report</h2>
+                        </div>
+                        <div class="p-6">
+                            <form id="weekly-report-form">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label for="week-start-date" class="block text-sm font-medium text-gray-700">Week Start Date</label>
+                                        <input type="date" id="week-start-date" name="week-start-date" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="week-end-date" class="block text-sm font-medium text-gray-700">Week End Date</label>
+                                        <input type="date" id="week-end-date" name="week-end-date" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="observation-count" class="block text-sm font-medium text-gray-700">Number of Observations</label>
+                                        <input type="number" id="observation-count" name="observation-count" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="open-observation-count" class="block text-sm font-medium text-gray-700">Number of Open Observations</label>
+                                        <input type="number" id="open-observation-count" name="open-observation-count" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="closed-observation-count" class="block text-sm font-medium text-gray-700">Number of Closed Observations</label>
+                                        <input type="number" id="closed-observation-count" name="closed-observation-count" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="inspection-count" class="block text-sm font-medium text-gray-700">Number of Inspections</label>
+                                        <input type="number" id="inspection-count" name="inspection-count" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="manpower-count" class="block text-sm font-medium text-gray-700">Number of Manpower</label>
+                                        <input type="number" id="manpower-count" name="manpower-count" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="manhours" class="block text-sm font-medium text-gray-700">Total Manhours This Week</label>
+                                        <input type="number" id="manhours" name="manhours" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="weekly-summary" class="block text-sm font-medium text-gray-700">Weekly Summary</label>
+                                        <textarea id="weekly-summary" name="weekly-summary" rows="4" required 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="weekly-highlights" class="block text-sm font-medium text-gray-700">Highlights</label>
+                                        <textarea id="weekly-highlights" name="weekly-highlights" rows="4" 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="weekly-challenges" class="block text-sm font-medium text-gray-700">Challenges</label>
+                                        <textarea id="weekly-challenges" name="weekly-challenges" rows="4" 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                </div>
+                                <div class="mt-6 flex justify-end">
+                                    <button type="button" onclick="navigateToDashboard()" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Submit Weekly Report
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Panel Section -->
+                <div id="admin-panel-section" class="hidden">
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-lg font-semibold text-gray-900">Admin Panel - User Management</h2>
+                        </div>
+                        <div class="p-6">
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <!-- Add User Form -->
+                                <div class="bg-gray-50 rounded-lg p-6">
+                                    <h3 class="text-lg font-medium text-gray-900 mb-4">Add New User</h3>
+                                    <form id="add-user-form" class="space-y-4">
+                                        <div>
+                                            <label for="new-username" class="block text-sm font-medium text-gray-700">Username</label>
+                                            <input type="text" id="new-username" name="new-username" required 
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+                                        <div>
+                                            <label for="new-password" class="block text-sm font-medium text-gray-700">Password</label>
+                                            <input type="password" id="new-password" name="new-password" required 
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+                                        <div>
+                                            <label for="user-role" class="block text-sm font-medium text-gray-700">Role</label>
+                                            <select id="user-role" name="user-role" required 
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                                <option value="user">User</option>
+                                                <option value="admin">Admin</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="user-fullname" class="block text-sm font-medium text-gray-700">Full Name</label>
+                                            <input type="text" id="user-fullname" name="user-fullname" required 
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+                                        <div>
+                                            <label for="user-position" class="block text-sm font-medium text-gray-700">Position</label>
+                                            <input type="text" id="user-position" name="user-position" required 
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+                                        <div>
+                                            <label for="user-photo" class="block text-sm font-medium text-gray-700">User Photo</label>
+                                            <input type="file" id="user-photo" name="user-photo" accept="image/*"
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+                                        <div>
+                                            <button type="submit" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                                Add User
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <!-- Users List -->
+                                <div>
+                                    <h3 class="text-lg font-medium text-gray-900 mb-4">Users List</h3>
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Photo</th>
+                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th>
+                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+                                                <!-- Users will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        const { jsPDF } = window.jspdf;
+        
+        // Global variables
+        let currentUser = null;
+        let users = [
+            { username: 'admin', password: 'admin123', role: 'admin', fullname: 'System Administrator', position: 'Safety Manager', photo: 'https://via.placeholder.com/40' },
+            { username: 'user1', password: 'user123', role: 'user', fullname: 'John Doe', position: 'Safety Officer', photo: 'https://via.placeholder.com/40' }
+        ];
+        
+        // DOM Elements
+        const loginPage = document.getElementById('login-page');
+        const appContainer = document.getElementById('app-container');
+        const loginForm = document.getElementById('login-form');
+        const logoutBtn = document.getElementById('logout-btn');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const contentArea = document.getElementById('content-area');
+        const pageTitle = document.getElementById('page-title');
+        const usernameDisplay = document.getElementById('username-display');
+        const adminMenuItem = document.getElementById('admin-menu-item');
+        const deleteObservationBtn = document.getElementById('delete-observation-btn');
+        
+        // Section elements
+        const dashboardSection = document.getElementById('dashboard-section');
+        const dailyReportSection = document.getElementById('daily-report-section');
+        const inspectionReportSection = document.getElementById('inspection-report-section');
+        const weeklyReportSection = document.getElementById('weekly-report-section');
+        const observationDatabaseSection = document.getElementById('observation-database-section');
+        const inspectionDatabaseSection = document.getElementById('inspection-database-section');
+        const weeklyDatabaseSection = document.getElementById('weekly-database-section');
+        const adminPanelSection = document.getElementById('admin-panel-section');
+        
+        // Form elements
+        const statusSelect = document.getElementById('status');
+        const actualCorrectiveActionContainer = document.getElementById('actual-corrective-action-container');
+        const dateClosedContainer = document.getElementById('date-closed-container');
+        const fileUpload = document.getElementById('file-upload');
+        const photoPreviewContainer = document.getElementById('photo-preview-container');
+        const photoPreview = document.getElementById('photo-preview');
+        const inspectionFileUpload = document.getElementById('inspection-file-upload');
+        const inspectionPhotoPreviewContainer = document.getElementById('inspection-photo-preview-container');
+        const inspectionPhotoPreviews = document.getElementById('inspection-photo-previews');
+
+        // Initialize the app
+        function initApp() {
+            // Check if user is already logged in (from localStorage)
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showMainApp();
+            }
+            
+            // Set today's date as default for date fields
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date-observed').value = today;
+            document.getElementById('inspection-date').value = today;
+            
+            // Set week dates (Monday to Sunday)
+            const now = new Date();
+            const dayOfWeek = now.getDay(); // 0 (Sunday) to 6 (Saturday)
+            const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust when day is Sunday
+            const monday = new Date(now.setDate(diff));
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            document.getElementById('week-start-date').value = monday.toISOString().split('T')[0];
+            document.getElementById('week-end-date').value = sunday.toISOString().split('T')[0];
+            
+            // Load users from localStorage if available
+            const savedUsers = localStorage.getItem('users');
+            if (savedUsers) {
+                users = JSON.parse(savedUsers);
+            }
+            
+            // Render users list
+            renderUsersList();
+            
+            // Load sample data
+            loadSampleData();
+        }
+
+        // Show main app
+        function showMainApp() {
+            loginPage.classList.add('hidden');
+            appContainer.classList.remove('hidden');
+            usernameDisplay.textContent = currentUser.fullname || currentUser.username;
+            
+            // Show/hide admin menu based on role
+            if (currentUser.role === 'admin') {
+                adminMenuItem.classList.remove('hidden');
+            } else {
+                adminMenuItem.classList.add('hidden');
+            }
+            
+            // Set reported by/inspected by to logged in user
+            document.getElementById('reported-by').value = currentUser.fullname || currentUser.username;
+            document.getElementById('inspected-by').value = currentUser.fullname || currentUser.username;
+            
+            // Update dashboard
+            updateDashboardMetrics();
+        }
+
+        // Login functionality
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Find user
+            const user = users.find(u => u.username === username && u.password === password);
+            
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                showMainApp();
+            } else {
+                alert('Invalid username or password!');
+            }
+        });
+
+        // Logout functionality
+        logoutBtn.addEventListener('click', function() {
+            appContainer.classList.add('hidden');
+            loginPage.classList.remove('hidden');
+            currentUser = null;
+            localStorage.removeItem('currentUser');
+            // Reset form
+            loginForm.reset();
+        });
+
+        // Sidebar toggle for desktop
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('collapsed');
+            contentArea.classList.toggle('expanded');
+        });
+
+        // Mobile menu toggle
+        mobileMenuBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('open');
+        });
+
+        // Navigation menu functionality
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = this.getAttribute('href');
+                
+                // Hide all sections
+                dashboardSection.classList.add('hidden');
+                dailyReportSection.classList.add('hidden');
+                inspectionReportSection.classList.add('hidden');
+                weeklyReportSection.classList.add('hidden');
+                observationDatabaseSection.classList.add('hidden');
+                inspectionDatabaseSection.classList.add('hidden');
+                weeklyDatabaseSection.classList.add('hidden');
+                adminPanelSection.classList.add('hidden');
+                
+                // Show target section
+                if (target === '#daily-report') {
+                    dailyReportSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Daily Observation Report';
+                } else if (target === '#inspection-report') {
+                    inspectionReportSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Inspection Report';
+                } else if (target === '#weekly-report') {
+                    weeklyReportSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Weekly Safety Report';
+                } else if (target === '#observation-database') {
+                    observationDatabaseSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Observation Database';
+                } else if (target === '#inspection-database') {
+                    inspectionDatabaseSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Inspection Database';
+                } else if (target === '#weekly-database') {
+                    weeklyDatabaseSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Weekly Report Database';
+                } else if (target === '#admin-panel') {
+                    adminPanelSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Admin Panel';
+                } else {
+                    dashboardSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Dashboard';
+                }
+                
+                // Close mobile menu if open
+                if (sidebar.classList.contains('open')) {
+                    sidebar.classList.remove('open');
+                }
+            });
+        });
+
+        // Status change handler for daily report
+        statusSelect.addEventListener('change', function() {
+            if (this.value === 'closed') {
+                actualCorrectiveActionContainer.classList.remove('hidden');
+                dateClosedContainer.classList.remove('hidden');
+            } else {
+                actualCorrectiveActionContainer.classList.add('hidden');
+                dateClosedContainer.classList.add('hidden');
+            }
+        });
+
+        // Photo upload preview for daily report
+        fileUpload.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    photoPreview.src = event.target.result;
+                    photoPreviewContainer.classList.remove('hidden');
+                };
+                
+                reader.readAsDataURL(file);
+            } else {
+                photoPreviewContainer.classList.add('hidden');
+            }
+        });
+
+        // Multiple photo upload preview for inspection report
+        inspectionFileUpload.addEventListener('change', function(e) {
+            inspectionPhotoPreviews.innerHTML = '';
+            
+            if (e.target.files.length > 0) {
+                inspectionPhotoPreviewContainer.classList.remove('hidden');
+                
+                Array.from(e.target.files).forEach(file => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(event) {
+                        const img = document.createElement('img');
+                        img.src = event.target.result;
+                        img.classList.add('photo-preview', 'rounded-md', 'border', 'border-gray-300');
+                        inspectionPhotoPreviews.appendChild(img);
+                    };
+                    
+                    reader.readAsDataURL(file);
+                });
+            } else {
+                inspectionPhotoPreviewContainer.classList.add('hidden');
+            }
+        });
+
+        // Form submission handlers
+        document.getElementById('daily-report-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const form = e.target;
+            const newId = allObservations.length > 0 ? Math.max(...allObservations.map(o => o.id)) + 1 : 1;
+            const newObservation = {
+                id: newId,
+                observationNumber: generateObservationNumber(newId, form['date-observed'].value),
+                date: form['date-observed'].value,
+                location: form.location.value,
+                description: form.description.value,
+                status: form.status.value,
+                closedDate: form.status.value === 'closed' ? form['date-closed'].value : '',
+                correctiveAction: form['actual-corrective-action'].value || '',
+                photoLink: '',
+                reportedBy: form['reported-by'].value
+            };
+            
+            // Add to observations
+            allObservations.unshift(newObservation);
+            filteredObservations.unshift(newObservation);
+            
+            // Reset form and update UI
+            alert('Daily report submitted successfully!');
+            form.reset();
+            photoPreviewContainer.classList.add('hidden');
+            
+            // If on database page, refresh the view
+            if (!observationDatabaseSection.classList.contains('hidden')) {
+                currentPage = 1;
+                renderDatabase();
+            }
+            
+            // Update dashboard
+            updateDashboardMetrics();
+            
+            // Navigate to dashboard
+            navigateToDashboard();
+        });
+
+        document.getElementById('inspection-report-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const form = e.target;
+            
+            const newId = allInspections.length > 0 ? Math.max(...allInspections.map(o => o.id)) + 1 : 1;
+            const newInspection = {
+                id: newId,
+                inspectionNumber: generateInspectionNumber(newId, form['inspection-date'].value),
+                date: form['inspection-date'].value,
+                location: form['inspection-location'].value,
+                type: document.querySelector('input[name="inspection-type"]:checked')?.value || 'General',
+                findings: form['inspection-findings'].value,
+                recommendations: form['inspection-recommendations'].value,
+                status: form['inspection-status'].value,
+                inspectedBy: form['inspected-by'].value,
+                photoLink: ''
+            };
+            
+            // Add to inspections
+            allInspections.unshift(newInspection);
+            filteredInspections.unshift(newInspection);
+            
+            // Reset form and update UI
+            alert('Inspection report submitted successfully!');
+            form.reset();
+            inspectionPhotoPreviewContainer.classList.add('hidden');
+            inspectionPhotoPreviews.innerHTML = '';
+            
+            // If on database page, refresh the view
+            if (!inspectionDatabaseSection.classList.contains('hidden')) {
+                inspectionCurrentPage = 1;
+                renderInspectionDatabase();
+            }
+            
+            // Update dashboard
+            updateDashboardMetrics();
+            
+            // Navigate to dashboard
+            navigateToDashboard();
+        });
+
+        document.getElementById('weekly-report-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const form = e.target;
+            
+            const newId = allWeeklyReports.length > 0 ? Math.max(...allWeeklyReports.map(o => o.id)) + 1 : 1;
+            const newWeeklyReport = {
+                id: newId,
+                reportNumber: generateWeeklyReportNumber(newId, form['week-start-date'].value),
+                weekStart: form['week-start-date'].value,
+                weekEnd: form['week-end-date'].value,
+                observations: parseInt(form['observation-count'].value),
+                openObservations: parseInt(form['open-observation-count'].value),
+                closedObservations: parseInt(form['closed-observation-count'].value),
+                inspections: parseInt(form['inspection-count'].value),
+                manpower: parseInt(form['manpower-count'].value),
+                manhours: parseInt(form['manhours'].value),
+                summary: form['weekly-summary'].value,
+                highlights: form['weekly-highlights'].value,
+                challenges: form['weekly-challenges'].value
+            };
+            
+            // Add to weekly reports
+            allWeeklyReports.unshift(newWeeklyReport);
+            filteredWeeklyReports.unshift(newWeeklyReport);
+            
+            // Reset form and update UI
+            alert('Weekly report submitted successfully!');
+            form.reset();
+            
+            // If on database page, refresh the view
+            if (!weeklyDatabaseSection.classList.contains('hidden')) {
+                weeklyCurrentPage = 1;
+                renderWeeklyDatabase();
+            }
+            
+            // Navigate to dashboard
+            navigateToDashboard();
+        });
+
+        // Admin Panel Functions
+        function renderUsersList() {
+            const tableBody = document.getElementById('users-table-body');
+            tableBody.innerHTML = '';
+            
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <img src="${user.photo}" alt="${user.fullname}" class="h-8 w-8 rounded-full">
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${user.username}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.password}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.role}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.fullname}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.position}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        ${user.username !== 'admin' ? 
+                            `<button onclick="deleteUser('${user.username}')" class="text-red-600 hover:text-red-900">Delete</button>` : 
+                            `<span class="text-gray-400">System User</span>`
+                        }
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        document.getElementById('add-user-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('new-username').value;
+            const password = document.getElementById('new-password').value;
+            const role = document.getElementById('user-role').value;
+            const fullname = document.getElementById('user-fullname').value;
+            const position = document.getElementById('user-position').value;
+            const photoFile = document.getElementById('user-photo').files[0];
+            
+            // Check if username already exists
+            if (users.find(u => u.username === username)) {
+                alert('Username already exists!');
+                return;
+            }
+            
+            // Handle photo upload
+            let photoUrl = 'https://via.placeholder.com/40';
+            if (photoFile) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoUrl = e.target.result;
+                    addUser(username, password, role, fullname, position, photoUrl);
+                };
+                reader.readAsDataURL(photoFile);
+            } else {
+                addUser(username, password, role, fullname, position, photoUrl);
+            }
+        });
+
+        function addUser(username, password, role, fullname, position, photoUrl) {
+            // Add new user
+            const newUser = { username, password, role, fullname, position, photo: photoUrl };
+            users.push(newUser);
+            
+            // Save to localStorage
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            // Reset form
+            document.getElementById('add-user-form').reset();
+            
+            // Update UI
+            renderUsersList();
+            alert('User added successfully!');
+        }
+
+        function deleteUser(username) {
+            if (username === 'admin') {
+                alert('Cannot delete system administrator!');
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to delete user ${username}?`)) {
+                users = users.filter(u => u.username !== username);
+                localStorage.setItem('users', JSON.stringify(users));
+                renderUsersList();
+                alert('User deleted successfully!');
+            }
+        }
+
+        // Observation database
+        let currentPage = 1;
+        const observationsPerPage = 10;
+        let allObservations = [];
+        let filteredObservations = [];
+
+        // Inspection database
+        let inspectionCurrentPage = 1;
+        const inspectionsPerPage = 10;
+        let allInspections = [];
+        let filteredInspections = [];
+
+        // Weekly report database
+        let weeklyCurrentPage = 1;
+        const weeklyPerPage = 10;
+        let allWeeklyReports = [];
+        let filteredWeeklyReports = [];
+
+        // Generate observation number
+        function generateObservationNumber(id, date) {
+            const dateObj = new Date(date);
+            const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
+            return `OBS-${dateStr}-${id.toString().padStart(4, '0')}`;
+        }
+
+        // Generate inspection number
+        function generateInspectionNumber(id, date) {
+            const dateObj = new Date(date);
+            const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
+            return `INS-${dateStr}-${id.toString().padStart(4, '0')}`;
+        }
+
+        // Generate weekly report number
+        function generateWeeklyReportNumber(id, date) {
+            const dateObj = new Date(date);
+            const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
+            return `WR-${dateStr}-${id.toString().padStart(4, '0')}`;
+        }
+
+        // Sample data - in a real app this would come from a backend API
+        function loadSampleData() {
+            allObservations = [
+                { 
+                    id: 1,
+                    observationNumber: 'OBS-20230515-0001',
+                    date: '2023-05-15', 
+                    location: 'Construction Site A', 
+                    description: 'Unsafe ladder use', 
+                    correctiveAction: 'Provided safety training and replaced damaged ladder',
+                    status: 'open', 
+                    closedDate: '',
+                    photoLink: '/photos/observation1.jpg',
+                    reportedBy: 'John Doe'
+                },
+                { 
+                    id: 2, 
+                    date: '2023-05-16', 
+                    location: 'Warehouse B', 
+                    description: 'Missing PPE', 
+                    correctiveAction: 'Issued new PPE to all workers',
+                    status: 'closed', 
+                    closedDate: '2023-05-18',
+                    photoLink: '/photos/observation2.jpg',
+                    reportedBy: 'Jane Smith'
+                },
+                { 
+                    id: 3, 
+                    date: '2023-05-17', 
+                    location: 'Workshop Area', 
+                    description: 'Equipment malfunction', 
+                    correctiveAction: 'Equipment repaired by maintenance team',
+                    status: 'open', 
+                    closedDate: '',
+                    photoLink: '/photos/observation3.jpg',
+                    reportedBy: 'Mike Johnson'
+                },
+                { 
+                    id: 4, 
+                    date: '2023-04-18', 
+                    location: 'Office Area', 
+                    description: 'Blocked fire exit', 
+                    correctiveAction: 'Removed obstruction and conducted fire drill',
+                    status: 'closed', 
+                    closedDate: '2023-04-20',
+                    photoLink: '/photos/observation4.jpg',
+                    reportedBy: 'Sarah Williams'
+                },
+                { 
+                    id: 5, 
+                    date: '2023-04-19', 
+                    location: 'Construction Site B', 
+                    description: 'Unsecured materials', 
+                    correctiveAction: 'Secured materials and added warning signs',
+                    status: 'open', 
+                    closedDate: '',
+                    photoLink: '/photos/observation5.jpg',
+                    reportedBy: 'David Brown'
+                }
+            ];
+            filteredObservations = [...allObservations];
+            renderDatabase();
+
+            allInspections = [
+                { 
+                    id: 1,
+                    inspectionNumber: 'INS-20230515-0001',
+                    date: '2023-05-15', 
+                    location: 'Construction Site A', 
+                    type: 'PPE Inspection',
+                    findings: 'Some workers not wearing safety helmets',
+                    recommendations: 'Mandatory PPE compliance training',
+                    status: 'needs-improvement',
+                    inspectedBy: 'John Doe',
+                    photoLink: '/photos/inspection1.jpg'
+                },
+                { 
+                    id: 2,
+                    inspectionNumber: 'INS-20230516-0001',
+                    date: '2023-05-16', 
+                    location: 'Warehouse B', 
+                    type: 'Workplace Inspection',
+                    findings: 'Emergency exits clearly marked and unobstructed',
+                    recommendations: 'Continue current practices',
+                    status: 'satisfactory',
+                    inspectedBy: 'Jane Smith',
+                    photoLink: '/photos/inspection2.jpg'
+                },
+                { 
+                    id: 3,
+                    inspectionNumber: 'INS-20230517-0001',
+                    date: '2023-05-17', 
+                    location: 'Workshop Area', 
+                    type: 'Equipment Inspection',
+                    findings: 'Heavy machinery requires maintenance',
+                    recommendations: 'Schedule maintenance for all equipment',
+                    status: 'unsatisfactory',
+                    inspectedBy: 'Mike Johnson',
+                    photoLink: '/photos/inspection3.jpg'
+                }
+            ];
+            filteredInspections = [...allInspections];
+            renderInspectionDatabase();
+
+            allWeeklyReports = [
+                { 
+                    id: 1,
+                    reportNumber: 'WR-20230515-0001',
+                    weekStart: '2023-05-08',
+                    weekEnd: '2023-05-14',
+                    observations: 12,
+                    openObservations: 5,
+                    closedObservations: 7,
+                    inspections: 3,
+                    manpower: 45,
+                    manhours: 360,
+                    summary: 'Good safety performance this week with focus on PPE compliance',
+                    highlights: 'Zero incidents reported',
+                    challenges: 'Need for additional safety training'
+                },
+                { 
+                    id: 2,
+                    reportNumber: 'WR-20230522-0001',
+                    weekStart: '2023-05-15',
+                    weekEnd: '2023-05-21',
+                    observations: 8,
+                    openObservations: 3,
+                    closedObservations: 5,
+                    inspections: 4,
+                    manpower: 50,
+                    manhours: 400,
+                    summary: 'Improved safety metrics with increased inspections',
+                    highlights: 'Successful safety training session',
+                    challenges: 'Equipment maintenance delays'
+                }
+            ];
+            filteredWeeklyReports = [...allWeeklyReports];
+            renderWeeklyDatabase();
+        }
+
+        // Observation Database Functions
+        function renderDatabase() {
+            const startIndex = (currentPage - 1) * observationsPerPage;
+            const endIndex = startIndex + observationsPerPage;
+            const pageObservations = filteredObservations.slice(startIndex, endIndex);
+            
+            const tableBody = document.getElementById('database-table-body');
+            tableBody.innerHTML = '';
+            
+            pageObservations.forEach(obs => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                const statusClass = obs.status === 'open' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${obs.observationNumber}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${obs.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${obs.location}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${obs.description.substring(0, 50)}${obs.description.length > 50 ? '...' : ''}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${obs.correctiveAction ? obs.correctiveAction.substring(0, 50) + (obs.correctiveAction.length > 50 ? '...' : '') : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs rounded-full ${statusClass}">${obs.status}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${obs.closedDate || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        ${obs.photoLink ? `<a href="${obs.photoLink}" class="text-blue-600 hover:text-blue-900" download>Photo</a>` : ''}
+                        <button onclick="editObservation(${obs.id})" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        ${currentUser.role === 'admin' ? `<button onclick="deleteObservationDirect(${obs.id})" class="text-red-600 hover:text-red-900">Delete</button>` : ''}
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            document.getElementById('database-count').textContent = 
+                `Showing ${startIndex + 1}-${Math.min(endIndex, filteredObservations.length)} of ${filteredObservations.length} observations`;
+            document.getElementById('database-page').textContent = currentPage;
+        }
+
+        function refreshDatabase() {
+            // In a real app, this would fetch fresh data from the server
+            loadSampleData();
+        }
+
+        function nextPage() {
+            if (currentPage * observationsPerPage < filteredObservations.length) {
+                currentPage++;
+                renderDatabase();
+            }
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderDatabase();
+            }
+        }
+
+        document.getElementById('database-search').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            filteredObservations = allObservations.filter(obs => 
+                obs.location.toLowerCase().includes(searchTerm) || 
+                obs.description.toLowerCase().includes(searchTerm) ||
+                obs.status.toLowerCase().includes(searchTerm) ||
+                obs.observationNumber.toLowerCase().includes(searchTerm)
+            );
+            currentPage = 1;
+            renderDatabase();
+        });
+
+        function editObservation(id) {
+            const observation = allObservations.find(obs => obs.id === id);
+            if (!observation) return;
+            
+            document.getElementById('edit-id').value = observation.id;
+            document.getElementById('edit-date').value = observation.date;
+            document.getElementById('edit-location').value = observation.location;
+            document.getElementById('edit-description').value = observation.description;
+            document.getElementById('edit-corrective-action').value = observation.correctiveAction || '';
+            document.getElementById('edit-status').value = observation.status;
+            document.getElementById('edit-closed-date').value = observation.closedDate || '';
+            document.getElementById('edit-photo-link').value = observation.photoLink || '';
+            
+            if (observation.status === 'closed') {
+                document.getElementById('edit-closed-date-container').classList.remove('hidden');
+            } else {
+                document.getElementById('edit-closed-date-container').classList.add('hidden');
+            }
+            
+            // Show delete button only for admin users
+            if (currentUser.role === 'admin') {
+                deleteObservationBtn.classList.remove('hidden');
+            } else {
+                deleteObservationBtn.classList.add('hidden');
+            }
+            
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
+        document.getElementById('edit-status').addEventListener('change', function() {
+            if (this.value === 'closed') {
+                document.getElementById('edit-closed-date-container').classList.remove('hidden');
+            } else {
+                document.getElementById('edit-closed-date-container').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('edit-observation-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const id = parseInt(document.getElementById('edit-id').value);
+            const observation = allObservations.find(obs => obs.id === id);
+            if (!observation) return;
+            
+            observation.date = document.getElementById('edit-date').value;
+            observation.location = document.getElementById('edit-location').value;
+            observation.description = document.getElementById('edit-description').value;
+            observation.correctiveAction = document.getElementById('edit-corrective-action').value;
+            observation.status = document.getElementById('edit-status').value;
+            observation.photoLink = document.getElementById('edit-photo-link').value;
+            
+            if (observation.status === 'closed') {
+                observation.closedDate = document.getElementById('edit-closed-date').value || new Date().toISOString().split('T')[0];
+            } else {
+                observation.closedDate = '';
+            }
+            
+            closeEditModal();
+            renderDatabase();
+            updateDashboardMetrics();
+            alert('Observation updated successfully!');
+        });
+
+        function deleteObservation() {
+            const id = parseInt(document.getElementById('edit-id').value);
+            if (confirm('Are you sure you want to delete this observation?')) {
+                allObservations = allObservations.filter(obs => obs.id !== id);
+                filteredObservations = filteredObservations.filter(obs => obs.id !== id);
+                
+                closeEditModal();
+                renderDatabase();
+                updateDashboardMetrics();
+                alert('Observation deleted successfully!');
+            }
+        }
+
+        function deleteObservationDirect(id) {
+            if (confirm('Are you sure you want to delete this observation?')) {
+                allObservations = allObservations.filter(obs => obs.id !== id);
+                filteredObservations = filteredObservations.filter(obs => obs.id !== id);
+                
+                renderDatabase();
+                updateDashboardMetrics();
+                alert('Observation deleted successfully!');
+            }
+        }
+
+        function exportObservationsToExcel() {
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+            
+            // Filter observations by date range if dates are selected
+            let observationsToExport = [...filteredObservations];
+            
+            if (dateFrom) {
+                observationsToExport = observationsToExport.filter(obs => obs.date >= dateFrom);
+            }
+            
+            if (dateTo) {
+                observationsToExport = observationsToExport.filter(obs => obs.date <= dateTo);
+            }
+            
+            // Prepare data for Excel
+            const excelData = observationsToExport.map(obs => ({
+                'Observation Number': obs.observationNumber,
+                'Date': obs.date,
+                'Location': obs.location,
+                'Description': obs.description,
+                'Corrective Action': obs.correctiveAction || 'N/A',
+                'Status': obs.status.charAt(0).toUpperCase() + obs.status.slice(1),
+                'Closed Date': obs.closedDate || 'N/A'
+            }));
+            
+            // Create worksheet
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Observations");
+            
+            // Generate file and download
+            const dateStr = new Date().toISOString().slice(0,10);
+            XLSX.writeFile(wb, `Observation_Reports_${dateStr}.xlsx`);
+        }
+
+        // Inspection Database Functions
+        function renderInspectionDatabase() {
+            const startIndex = (inspectionCurrentPage - 1) * inspectionsPerPage;
+            const endIndex = startIndex + inspectionsPerPage;
+            const pageInspections = filteredInspections.slice(startIndex, endIndex);
+            
+            const tableBody = document.getElementById('inspection-table-body');
+            tableBody.innerHTML = '';
+            
+            pageInspections.forEach(ins => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                const statusClass = ins.status === 'satisfactory' ? 'bg-green-100 text-green-800' : 
+                                  ins.status === 'needs-improvement' ? 'bg-yellow-100 text-yellow-800' : 
+                                  'bg-red-100 text-red-800';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${ins.inspectionNumber}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${ins.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${ins.location}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${ins.type}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${ins.findings.substring(0, 50)}${ins.findings.length > 50 ? '...' : ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs rounded-full ${statusClass}">${ins.status.replace('-', ' ')}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        ${ins.photoLink ? `<a href="${ins.photoLink}" class="text-blue-600 hover:text-blue-900" download>Photo</a>` : ''}
+                        <button onclick="editInspection(${ins.id})" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        ${currentUser.role === 'admin' ? `<button onclick="deleteInspection(${ins.id})" class="text-red-600 hover:text-red-900">Delete</button>` : ''}
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            document.getElementById('inspection-count').textContent = 
+                `Showing ${startIndex + 1}-${Math.min(endIndex, filteredInspections.length)} of ${filteredInspections.length} inspections`;
+            document.getElementById('inspection-page').textContent = inspectionCurrentPage;
+        }
+
+        function refreshInspectionDatabase() {
+            // In a real app, this would fetch fresh data from the server
+            loadSampleData();
+        }
+
+        function nextInspectionPage() {
+            if (inspectionCurrentPage * inspectionsPerPage < filteredInspections.length) {
+                inspectionCurrentPage++;
+                renderInspectionDatabase();
+            }
+        }
+
+        function previousInspectionPage() {
+            if (inspectionCurrentPage > 1) {
+                inspectionCurrentPage--;
+                renderInspectionDatabase();
+            }
+        }
+
+        document.getElementById('inspection-search').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            filteredInspections = allInspections.filter(ins => 
+                ins.location.toLowerCase().includes(searchTerm) || 
+                ins.findings.toLowerCase().includes(searchTerm) ||
+                ins.status.toLowerCase().includes(searchTerm) ||
+                ins.inspectionNumber.toLowerCase().includes(searchTerm)
+            );
+            inspectionCurrentPage = 1;
+            renderInspectionDatabase();
+        });
+
+        function editInspection(id) {
+            alert('Edit inspection functionality would be implemented here');
+        }
+
+        function deleteInspection(id) {
+            if (confirm('Are you sure you want to delete this inspection?')) {
+                allInspections = allInspections.filter(ins => ins.id !== id);
+                filteredInspections = filteredInspections.filter(ins => ins.id !== id);
+                
+                renderInspectionDatabase();
+                updateDashboardMetrics();
+                alert('Inspection deleted successfully!');
+            }
+        }
+
+        function exportInspectionsToExcel() {
+            const dateFrom = document.getElementById('inspection-date-from').value;
+            const dateTo = document.getElementById('inspection-date-to').value;
+            
+            // Filter inspections by date range if dates are selected
+            let inspectionsToExport = [...filteredInspections];
+            
+            if (dateFrom) {
+                inspectionsToExport = inspectionsToExport.filter(ins => ins.date >= dateFrom);
+            }
+            
+            if (dateTo) {
+                inspectionsToExport = inspectionsToExport.filter(ins => ins.date <= dateTo);
+            }
+            
+            // Prepare data for Excel
+            const excelData = inspectionsToExport.map(ins => ({
+                'Inspection Number': ins.inspectionNumber,
+                'Date': ins.date,
+                'Location': ins.location,
+                'Type': ins.type,
+                'Findings': ins.findings,
+                'Recommendations': ins.recommendations,
+                'Status': ins.status.replace('-', ' '),
+                'Inspected By': ins.inspectedBy
+            }));
+            
+            // Create worksheet
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Inspections");
+            
+            // Generate file and download
+            const dateStr = new Date().toISOString().slice(0,10);
+            XLSX.writeFile(wb, `Inspection_Reports_${dateStr}.xlsx`);
+        }
+
+        // Weekly Database Functions
+        function renderWeeklyDatabase() {
+            const startIndex = (weeklyCurrentPage - 1) * weeklyPerPage;
+            const endIndex = startIndex + weeklyPerPage;
+            const pageWeeklyReports = filteredWeeklyReports.slice(startIndex, endIndex);
+            
+            const tableBody = document.getElementById('weekly-table-body');
+            tableBody.innerHTML = '';
+            
+            pageWeeklyReports.forEach(rep => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${rep.reportNumber}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${rep.weekStart}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${rep.weekEnd}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${rep.observations}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${rep.inspections}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${rep.manpower}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${rep.manhours}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button onclick="viewWeeklyReport(${rep.id})" class="text-blue-600 hover:text-blue-900">View</button>
+                        <button onclick="editWeeklyReport(${rep.id})" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        ${currentUser.role === 'admin' ? `<button onclick="deleteWeeklyReport(${rep.id})" class="text-red-600 hover:text-red-900">Delete</button>` : ''}
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            document.getElementById('weekly-count').textContent = 
+                `Showing ${startIndex + 1}-${Math.min(endIndex, filteredWeeklyReports.length)} of ${filteredWeeklyReports.length} reports`;
+            document.getElementById('weekly-page').textContent = weeklyCurrentPage;
+        }
+
+        function refreshWeeklyDatabase() {
+            // In a real app, this would fetch fresh data from the server
+            loadSampleData();
+        }
+
+        function nextWeeklyPage() {
+            if (weeklyCurrentPage * weeklyPerPage < filteredWeeklyReports.length) {
+                weeklyCurrentPage++;
+                renderWeeklyDatabase();
+            }
+        }
+
+        function previousWeeklyPage() {
+            if (weeklyCurrentPage > 1) {
+                weeklyCurrentPage--;
+                renderWeeklyDatabase();
+            }
+        }
+
+        document.getElementById('weekly-search').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            filteredWeeklyReports = allWeeklyReports.filter(rep => 
+                rep.reportNumber.toLowerCase().includes(searchTerm) || 
+                rep.summary.toLowerCase().includes(searchTerm)
+            );
+            weeklyCurrentPage = 1;
+            renderWeeklyDatabase();
+        });
+
+        function viewWeeklyReport(id) {
+            alert('View weekly report functionality would be implemented here');
+        }
+
+        function editWeeklyReport(id) {
+            alert('Edit weekly report functionality would be implemented here');
+        }
+
+        function deleteWeeklyReport(id) {
+            if (confirm('Are you sure you want to delete this weekly report?')) {
+                allWeeklyReports = allWeeklyReports.filter(rep => rep.id !== id);
+                filteredWeeklyReports = filteredWeeklyReports.filter(rep => rep.id !== id);
+                
+                renderWeeklyDatabase();
+                alert('Weekly report deleted successfully!');
+            }
+        }
+
+        function exportWeeklyToExcel() {
+            const dateFrom = document.getElementById('weekly-date-from').value;
+            const dateTo = document.getElementById('weekly-date-to').value;
+            
+            // Filter weekly reports by date range if dates are selected
+            let weeklyReportsToExport = [...filteredWeeklyReports];
+            
+            if (dateFrom) {
+                weeklyReportsToExport = weeklyReportsToExport.filter(rep => rep.weekStart >= dateFrom);
+            }
+            
+            if (dateTo) {
+                weeklyReportsToExport = weeklyReportsToExport.filter(rep => rep.weekEnd <= dateTo);
+            }
+            
+            // Prepare data for Excel
+            const excelData = weeklyReportsToExport.map(rep => ({
+                'Report Number': rep.reportNumber,
+                'Week Start': rep.weekStart,
+                'Week End': rep.weekEnd,
+                'Observations': rep.observations,
+                'Open Observations': rep.openObservations,
+                'Closed Observations': rep.closedObservations,
+                'Inspections': rep.inspections,
+                'Manpower': rep.manpower,
+                'Manhours': rep.manhours,
+                'Summary': rep.summary
+            }));
+            
+            // Create worksheet
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Weekly Reports");
+            
+            // Generate file and download
+            const dateStr = new Date().toISOString().slice(0,10);
+            XLSX.writeFile(wb, `Weekly_Reports_${dateStr}.xlsx`);
+        }
+
+        // Dashboard filtering functionality
+        function updateDashboardMetrics(month, year) {
+            // Filter observations based on month and year
+            let filteredObservations = allObservations;
+            
+            if (month && year) {
+                filteredObservations = allObservations.filter(obs => {
+                    const obsDate = new Date(obs.date);
+                    return obsDate.getMonth() + 1 == month && obsDate.getFullYear() == year;
+                });
+            } else if (month) {
+                filteredObservations = allObservations.filter(obs => {
+                    const obsDate = new Date(obs.date);
+                    return obsDate.getMonth() + 1 == month;
+                });
+            } else if (year) {
+                filteredObservations = allObservations.filter(obs => {
+                    const obsDate = new Date(obs.date);
+                    return obsDate.getFullYear() == year;
+                });
+            }
+            
+            // Calculate metrics
+            const totalReports = filteredObservations.length;
+            const openObservations = filteredObservations.filter(obs => obs.status === 'open').length;
+            const closedObservations = filteredObservations.filter(obs => obs.status === 'closed').length;
+            const inspections = filteredInspections.length;
+            
+            // Update dashboard cards
+            document.getElementById('open-obs-count').textContent = openObservations;
+            document.getElementById('closed-obs-count').textContent = closedObservations;
+            
+            // Update recent reports list (first 3 filtered observations)
+            const recentReportsContainer = document.getElementById('recent-reports-container');
+            recentReportsContainer.innerHTML = '';
+            
+            const recentReports = filteredObservations.slice(0, 3);
+            recentReports.forEach(report => {
+                const statusClass = report.status === 'open' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
+                
+                const reportElement = document.createElement('div');
+                reportElement.className = 'border-b pb-4';
+                reportElement.innerHTML = `
+                    <div class="flex justify-between">
+                        <p class="font-medium">${report.description.substring(0, 40)}${report.description.length > 40 ? '...' : ''}</p>
+                        <span class="px-2 py-1 text-xs rounded-full ${statusClass}">${report.status}</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Reported by: ${report.reportedBy || 'System'}</p>
+                    <p class="text-sm text-gray-500">Location: ${report.location}</p>
+                `;
+                
+                recentReportsContainer.appendChild(reportElement);
+            });
+            
+            if (recentReports.length === 0) {
+                recentReportsContainer.innerHTML = '<p class="text-gray-500">No reports found for selected filter</p>';
+            }
+        }
+
+        document.getElementById('apply-filter').addEventListener('click', function() {
+            const month = document.getElementById('filter-month').value;
+            const year = document.getElementById('filter-year').value;
+            updateDashboardMetrics(month ? parseInt(month) : null, year ? parseInt(year) : null);
+        });
+
+        document.getElementById('reset-filter').addEventListener('click', function() {
+            document.getElementById('filter-month').value = '';
+            document.getElementById('filter-year').value = '';
+            updateDashboardMetrics(null, null);
+        });
+
+        // Navigate back to dashboard
+        function navigateToDashboard() {
+            // Hide all sections
+            dashboardSection.classList.add('hidden');
+            dailyReportSection.classList.add('hidden');
+            inspectionReportSection.classList.add('hidden');
+            weeklyReportSection.classList.add('hidden');
+            adminPanelSection.classList.add('hidden');
+            
+            // Show dashboard
+            dashboardSection.classList.remove('hidden');
+            pageTitle.textContent = 'Dashboard';
+            
+            // Close mobile menu if open
+            if (sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+            }
+        }
+
+        // Quick action navigation
+        function navigateToSection(section) {
+            // Hide all sections
+            dashboardSection.classList.add('hidden');
+            dailyReportSection.classList.add('hidden');
+            inspectionReportSection.classList.add('hidden');
+            weeklyReportSection.classList.add('hidden');
+            adminPanelSection.classList.add('hidden');
+            
+            // Show target section
+            if (section === 'daily-report') {
+                dailyReportSection.classList.remove('hidden');
+                pageTitle.textContent = 'Daily Observation Report';
+            } else if (section === 'inspection-report') {
+                inspectionReportSection.classList.remove('hidden');
+                pageTitle.textContent = 'Inspection Report';
+            } else if (section === 'weekly-report') {
+                weeklyReportSection.classList.remove('hidden');
+                pageTitle.textContent = 'Weekly Safety Report';
+            } else if (section === 'admin-panel') {
+                adminPanelSection.classList.remove('hidden');
+                pageTitle.textContent = 'Admin Panel';
+            }
+            
+            // Close mobile menu if open
+            if (sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+            }
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initApp();
+        });
+    </script>
+</body>
+</html>
