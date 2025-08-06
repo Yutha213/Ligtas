@@ -191,7 +191,7 @@
             <!-- Notifications Dropdown -->
             <div id="notifications-dropdown" class="hidden absolute right-4 top-16 w-80 bg-white rounded-lg shadow-xl z-50">
                 <div class="p-4 border-b">
-                    <h3 class="font-semibold text-gray-900">Notifications</h3>
+                    <h3 class="font-semibold text-gray-900">Overdue Observations</h3>
                 </div>
                 <div id="notifications-list" class="max-h-96 overflow-y-auto">
                     <!-- Notifications will be loaded here -->
@@ -1104,12 +1104,21 @@
                 } else if (target === '#observation-database') {
                     observationDatabaseSection.classList.remove('hidden');
                     pageTitle.textContent = 'Observation Database';
+                    // Refresh the database when navigating to it
+                    currentPage = 1;
+                    renderDatabase();
                 } else if (target === '#inspection-database') {
                     inspectionDatabaseSection.classList.remove('hidden');
                     pageTitle.textContent = 'Inspection Database';
+                    // Refresh the database when navigating to it
+                    inspectionCurrentPage = 1;
+                    renderInspectionDatabase();
                 } else if (target === '#weekly-database') {
                     weeklyDatabaseSection.classList.remove('hidden');
                     pageTitle.textContent = 'Weekly Report Database';
+                    // Refresh the database when navigating to it
+                    weeklyCurrentPage = 1;
+                    renderWeeklyDatabase();
                 } else if (target === '#admin-panel') {
                     adminPanelSection.classList.remove('hidden');
                     pageTitle.textContent = 'Admin Panel';
@@ -1193,11 +1202,14 @@
                 date: form['date-observed'].value,
                 location: form.location.value,
                 description: form.description.value,
+                type: form['observation-type'].value,
                 status: form.status.value,
                 closedDate: form.status.value === 'closed' ? form['date-closed'].value : '',
                 correctiveAction: form['actual-corrective-action'].value || '',
                 photoLink: '',
-                reportedBy: form['reported-by'].value
+                reportedBy: form['reported-by'].value,
+                immediateAction: form['immediate-action'].value,
+                responsiblePerson: form['responsible-person'].value
             };
             
             // Add to observations
@@ -1436,146 +1448,6 @@
             const dateObj = new Date(date);
             const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
             return `WR-${dateStr}-${id.toString().padStart(4, '0')}`;
-        }
-
-        // Sample data - in a real app this would come from a backend API
-        function loadSampleData() {
-            allObservations = [
-                { 
-                    id: 1,
-                    observationNumber: 'OBS-20230515-0001',
-                    date: '2023-05-15', 
-                    location: 'Construction Site A', 
-                    description: 'Unsafe ladder use', 
-                    correctiveAction: 'Provided safety training and replaced damaged ladder',
-                    status: 'open', 
-                    closedDate: '',
-                    photoLink: '/photos/observation1.jpg',
-                    reportedBy: 'John Doe'
-                },
-                { 
-                    id: 2, 
-                    date: '2023-05-16', 
-                    location: 'Warehouse B', 
-                    description: 'Missing PPE', 
-                    correctiveAction: 'Issued new PPE to all workers',
-                    status: 'closed', 
-                    closedDate: '2023-05-18',
-                    photoLink: '/photos/observation2.jpg',
-                    reportedBy: 'Jane Smith'
-                },
-                { 
-                    id: 3, 
-                    date: '2023-05-17', 
-                    location: 'Workshop Area', 
-                    description: 'Equipment malfunction', 
-                    correctiveAction: 'Equipment repaired by maintenance team',
-                    status: 'open', 
-                    closedDate: '',
-                    photoLink: '/photos/observation3.jpg',
-                    reportedBy: 'Mike Johnson'
-                },
-                { 
-                    id: 4, 
-                    date: '2023-04-18', 
-                    location: 'Office Area', 
-                    description: 'Blocked fire exit', 
-                    correctiveAction: 'Removed obstruction and conducted fire drill',
-                    status: 'closed', 
-                    closedDate: '2023-04-20',
-                    photoLink: '/photos/observation4.jpg',
-                    reportedBy: 'Sarah Williams'
-                },
-                { 
-                    id: 5, 
-                    date: '2023-04-19', 
-                    location: 'Construction Site B', 
-                    description: 'Unsecured materials', 
-                    correctiveAction: 'Secured materials and added warning signs',
-                    status: 'open', 
-                    closedDate: '',
-                    photoLink: '/photos/observation5.jpg',
-                    reportedBy: 'David Brown'
-                }
-            ];
-            filteredObservations = [...allObservations];
-            renderDatabase();
-
-            allInspections = [
-                { 
-                    id: 1,
-                    inspectionNumber: 'INS-20230515-0001',
-                    date: '2023-05-15', 
-                    location: 'Construction Site A', 
-                    type: 'PPE Inspection',
-                    findings: 'Some workers not wearing safety helmets',
-                    recommendations: 'Mandatory PPE compliance training',
-                    status: 'needs-improvement',
-                    inspectedBy: 'John Doe',
-                    photoLink: '/photos/inspection1.jpg'
-                },
-                { 
-                    id: 2,
-                    inspectionNumber: 'INS-20230516-0001',
-                    date: '2023-05-16', 
-                    location: 'Warehouse B', 
-                    type: 'Workplace Inspection',
-                    findings: 'Emergency exits clearly marked and unobstructed',
-                    recommendations: 'Continue current practices',
-                    status: 'satisfactory',
-                    inspectedBy: 'Jane Smith',
-                    photoLink: '/photos/inspection2.jpg'
-                },
-                { 
-                    id: 3,
-                    inspectionNumber: 'INS-20230517-0001',
-                    date: '2023-05-17', 
-                    location: 'Workshop Area', 
-                    type: 'Equipment Inspection',
-                    findings: 'Heavy machinery requires maintenance',
-                    recommendations: 'Schedule maintenance for all equipment',
-                    status: 'unsatisfactory',
-                    inspectedBy: 'Mike Johnson',
-                    photoLink: '/photos/inspection3.jpg'
-                }
-            ];
-            filteredInspections = [...allInspections];
-            renderInspectionDatabase();
-
-            allWeeklyReports = [
-                { 
-                    id: 1,
-                    reportNumber: 'WR-20230515-0001',
-                    weekStart: '2023-05-08',
-                    weekEnd: '2023-05-14',
-                    observations: 12,
-                    openObservations: 5,
-                    closedObservations: 7,
-                    inspections: 3,
-                    manpower: 45,
-                    manhours: 360,
-                    summary: 'Good safety performance this week with focus on PPE compliance',
-                    highlights: 'Zero incidents reported',
-                    challenges: 'Need for additional safety training'
-                },
-                { 
-                    id: 2,
-                    reportNumber: 'WR-20230522-0001',
-                    weekStart: '2023-05-15',
-                    weekEnd: '2023-05-21',
-                    observations: 8,
-                    openObservations: 3,
-                    closedObservations: 5,
-                    inspections: 4,
-                    manpower: 50,
-                    manhours: 400,
-                    summary: 'Improved safety metrics with increased inspections',
-                    highlights: 'Successful safety training session',
-                    challenges: 'Equipment maintenance delays'
-                }
-            ];
-            filteredWeeklyReports = [...allWeeklyReports];
-            renderWeeklyDatabase();
         }
 
         // Observation Database Functions
