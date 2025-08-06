@@ -6,6 +6,10 @@
     <title>Ligtas - Safety Reporting App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <style>
         /* Custom styles */
         .sidebar {
@@ -177,11 +181,11 @@
                         </div>
                         <div class="flex items-center">
                             <div class="flex-shrink-0">
-                                <img class="h-8 w-8 rounded-full" src="https://via.placeholder.com/40" alt="User profile">
+                                <img class="h-8 w-8 rounded-full" src="https://via.placeholder.com/40" alt="User profile" id="user-photo-top">
                             </div>
                             <div class="ml-3">
                                 <p class="text-sm font-medium text-gray-700" id="username-display">John Doe</p>
-                                <p class="text-xs font-medium text-gray-500">Safety Officer</p>
+                                <p class="text-xs font-medium text-gray-500" id="user-position-display">Safety Officer</p>
                             </div>
                         </div>
                     </div>
@@ -916,12 +920,24 @@
     <script>
         const { jsPDF } = window.jspdf;
         
+        // Firebase Configuration - REPLACE WITH YOUR CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyDrerdrpiw-DM3kZORRJMd8TM2PGhm-JJc",
+            authDomain: "ligtasapp-f0d29.firebaseapp.com",
+            projectId: "ligtasapp-f0d29",
+            storageBucket: "ligtasapp-f0d29.appspot.com",
+            messagingSenderId: "498792593086",
+            appId: "1:498792593086:web:82e634ac4f2fdc1a7950ef"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
         // Global variables
         let currentUser = null;
-        let users = [
-            { username: 'admin', password: 'admin123', role: 'admin', fullname: 'System Administrator', position: 'Safety Manager', photo: 'https://via.placeholder.com/40' },
-            { username: 'user1', password: 'user123', role: 'user', fullname: 'John Doe', position: 'Safety Officer', photo: 'https://via.placeholder.com/40' }
-        ];
+        let users = [];
         
         // DOM Elements
         const loginPage = document.getElementById('login-page');
@@ -934,6 +950,8 @@
         const contentArea = document.getElementById('content-area');
         const pageTitle = document.getElementById('page-title');
         const usernameDisplay = document.getElementById('username-display');
+        const userPositionDisplay = document.getElementById('user-position-display');
+        const userPhotoTop = document.getElementById('user-photo-top');
         const adminMenuItem = document.getElementById('admin-menu-item');
         const deleteObservationBtn = document.getElementById('delete-observation-btn');
         const notificationsBtn = document.getElementById('notifications-btn');
@@ -961,14 +979,36 @@
         const inspectionPhotoPreviewContainer = document.getElementById('inspection-photo-preview-container');
         const inspectionPhotoPreviews = document.getElementById('inspection-photo-previews');
 
+        // Observation database
+        let currentPage = 1;
+        const observationsPerPage = 10;
+        let allObservations = [];
+        let filteredObservations = [];
+
+        // Inspection database
+        let inspectionCurrentPage = 1;
+        const inspectionsPerPage = 10;
+        let allInspections = [];
+        let filteredInspections = [];
+
+        // Weekly report database
+        let weeklyCurrentPage = 1;
+        const weeklyPerPage = 10;
+        let allWeeklyReports = [];
+        let filteredWeeklyReports = [];
+
         // Initialize the app
         function initApp() {
-            // Check if user is already logged in (from localStorage)
-            const savedUser = localStorage.getItem('currentUser');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                showMainApp();
-            }
+            // Check authentication state
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    // User is signed in
+                    loadUserData(user.uid);
+                } else {
+                    // User is signed out
+                    showLogin();
+                }
+            });
             
             // Set today's date as default for date fields
             const today = new Date().toISOString().split('T')[0];
@@ -985,21 +1025,12 @@
             
             document.getElementById('week-start-date').value = monday.toISOString().split('T')[0];
             document.getElementById('week-end-date').value = sunday.toISOString().split('T')[0];
-            
-            // Load users from localStorage if available
-            const savedUsers = localStorage.getItem('users');
-            if (savedUsers) {
-                users = JSON.parse(savedUsers);
-            }
-            
-            // Render users list
-            renderUsersList();
-            
-            // Load sample data
-            loadSampleData();
-            
-            // Check for overdue observations
-            checkOverdueObservations();
+        }
+
+        // Show login page
+        function showLogin() {
+            appContainer.classList.add('hidden');
+            loginPage.classList.remove('hidden');
         }
 
         // Show main app
@@ -1007,6 +1038,8 @@
             loginPage.classList.add('hidden');
             appContainer.classList.remove('hidden');
             usernameDisplay.textContent = currentUser.fullname || currentUser.username;
+            userPositionDisplay.textContent = currentUser.position || 'User';
+            userPhotoTop.src = currentUser.photo || 'https://via.placeholder.com/40';
             
             // Show/hide admin menu based on role
             if (currentUser.role === 'admin') {
@@ -1019,8 +1052,58 @@
             document.getElementById('reported-by').value = currentUser.fullname || currentUser.username;
             document.getElementById('inspected-by').value = currentUser.fullname || currentUser.username;
             
-            // Update dashboard
-            updateDashboardMetrics();
+            // Load data from database
+            loadAllData();
+        }
+
+        // Load user data from Firestore
+        function loadUserData(uid) {
+            db.collection('users').doc(uid).get().then(doc => {
+                if (doc.exists) {
+                    currentUser = { id: uid, ...doc.data() };
+                    showMainApp();
+                } else {
+                    console.log("No such user!");
+                    showLogin();
+                }
+            }).catch(error => {
+                console.log("Error getting user:", error);
+                showLogin();
+            });
+        }
+
+        // Load all data from Firestore
+        function loadAllData() {
+            // Load observations
+            db.collection('observations').orderBy('date', 'desc').get().then(querySnapshot => {
+                allObservations = [];
+                querySnapshot.forEach(doc => {
+                    allObservations.push({ id: doc.id, ...doc.data() });
+                });
+                filteredObservations = [...allObservations];
+                renderDatabase();
+                updateDashboardMetrics();
+            });
+
+            // Load inspections
+            db.collection('inspections').orderBy('date', 'desc').get().then(querySnapshot => {
+                allInspections = [];
+                querySnapshot.forEach(doc => {
+                    allInspections.push({ id: doc.id, ...doc.data() });
+                });
+                filteredInspections = [...allInspections];
+                renderInspectionDatabase();
+            });
+
+            // Load weekly reports
+            db.collection('weeklyReports').orderBy('weekStart', 'desc').get().then(querySnapshot => {
+                allWeeklyReports = [];
+                querySnapshot.forEach(doc => {
+                    allWeeklyReports.push({ id: doc.id, ...doc.data() });
+                });
+                filteredWeeklyReports = [...allWeeklyReports];
+                renderWeeklyDatabase();
+            });
         }
 
         // Login functionality
@@ -1029,165 +1112,105 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             
-            // Find user
-            const user = users.find(u => u.username === username && u.password === password);
-            
-            if (user) {
-                currentUser = user;
-                localStorage.setItem('currentUser', JSON.stringify(user));
-                showMainApp();
-            } else {
-                alert('Invalid username or password!');
-            }
+            // Sign in with Firebase Auth
+            auth.signInWithEmailAndPassword(username + '@ligtas.app', password)
+                .then(userCredential => {
+                    // Signed in
+                    const user = userCredential.user;
+                    loadUserData(user.uid);
+                })
+                .catch(error => {
+                    console.log("Login error:", error);
+                    alert('Invalid username or password!');
+                });
         });
 
         // Logout functionality
         logoutBtn.addEventListener('click', function() {
-            appContainer.classList.add('hidden');
-            loginPage.classList.remove('hidden');
-            currentUser = null;
-            localStorage.removeItem('currentUser');
-            // Reset form
-            loginForm.reset();
-        });
-
-        // Sidebar toggle for desktop
-        sidebarToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('collapsed');
-            contentArea.classList.toggle('expanded');
-        });
-
-        // Mobile menu toggle
-        mobileMenuBtn.addEventListener('click', function() {
-            sidebar.classList.toggle('open');
-        });
-
-        // Notifications dropdown
-        notificationsBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            notificationsDropdown.classList.toggle('hidden');
-        });
-
-        // Close notifications when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!notificationsBtn.contains(e.target) && !notificationsDropdown.contains(e.target)) {
-                notificationsDropdown.classList.add('hidden');
-            }
-        });
-
-        // Navigation menu functionality
-        document.querySelectorAll('nav a').forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const target = this.getAttribute('href');
-                
-                // Hide all sections
-                dashboardSection.classList.add('hidden');
-                dailyReportSection.classList.add('hidden');
-                inspectionReportSection.classList.add('hidden');
-                weeklyReportSection.classList.add('hidden');
-                observationDatabaseSection.classList.add('hidden');
-                inspectionDatabaseSection.classList.add('hidden');
-                weeklyDatabaseSection.classList.add('hidden');
-                adminPanelSection.classList.add('hidden');
-                
-                // Show target section
-                if (target === '#daily-report') {
-                    dailyReportSection.classList.remove('hidden');
-                    pageTitle.textContent = 'Daily Observation Report';
-                } else if (target === '#inspection-report') {
-                    inspectionReportSection.classList.remove('hidden');
-                    pageTitle.textContent = 'Inspection Report';
-                } else if (target === '#weekly-report') {
-                    weeklyReportSection.classList.remove('hidden');
-                    pageTitle.textContent = 'Weekly Safety Report';
-                } else if (target === '#observation-database') {
-                    observationDatabaseSection.classList.remove('hidden');
-                    pageTitle.textContent = 'Observation Database';
-                    // Refresh the database when navigating to it
-                    currentPage = 1;
-                    renderDatabase();
-                } else if (target === '#inspection-database') {
-                    inspectionDatabaseSection.classList.remove('hidden');
-                    pageTitle.textContent = 'Inspection Database';
-                    // Refresh the database when navigating to it
-                    inspectionCurrentPage = 1;
-                    renderInspectionDatabase();
-                } else if (target === '#weekly-database') {
-                    weeklyDatabaseSection.classList.remove('hidden');
-                    pageTitle.textContent = 'Weekly Report Database';
-                    // Refresh the database when navigating to it
-                    weeklyCurrentPage = 1;
-                    renderWeeklyDatabase();
-                } else if (target === '#admin-panel') {
-                    adminPanelSection.classList.remove('hidden');
-                    pageTitle.textContent = 'Admin Panel';
-                } else {
-                    dashboardSection.classList.remove('hidden');
-                    pageTitle.textContent = 'Dashboard';
-                }
-                
-                // Close mobile menu if open
-                if (sidebar.classList.contains('open')) {
-                    sidebar.classList.remove('open');
-                }
-                
-                // Close notifications dropdown
-                notificationsDropdown.classList.add('hidden');
+            auth.signOut().then(() => {
+                appContainer.classList.add('hidden');
+                loginPage.classList.remove('hidden');
+                currentUser = null;
+                // Reset form
+                loginForm.reset();
+            }).catch(error => {
+                console.log("Logout error:", error);
             });
         });
 
-        // Status change handler for daily report
-        statusSelect.addEventListener('change', function() {
-            if (this.value === 'closed') {
-                actualCorrectiveActionContainer.classList.remove('hidden');
-                dateClosedContainer.classList.remove('hidden');
-            } else {
-                actualCorrectiveActionContainer.classList.add('hidden');
-                dateClosedContainer.classList.add('hidden');
-            }
-        });
+        // Generate observation number
+        function generateObservationNumber(id, date) {
+            const dateObj = new Date(date);
+            const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
+            return `OBS-${dateStr}-${id.toString().padStart(4, '0')}`;
+        }
 
-        // Photo upload preview for daily report
-        fileUpload.addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                
-                reader.onload = function(event) {
-                    photoPreview.src = event.target.result;
-                    photoPreviewContainer.classList.remove('hidden');
-                };
-                
-                reader.readAsDataURL(file);
-            } else {
-                photoPreviewContainer.classList.add('hidden');
-            }
-        });
+        // Generate inspection number
+        function generateInspectionNumber(id, date) {
+            const dateObj = new Date(date);
+            const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
+            return `INS-${dateStr}-${id.toString().padStart(4, '0')}`;
+        }
 
-        // Multiple photo upload preview for inspection report
-        inspectionFileUpload.addEventListener('change', function(e) {
-            inspectionPhotoPreviews.innerHTML = '';
-            
-            if (e.target.files.length > 0) {
-                inspectionPhotoPreviewContainer.classList.remove('hidden');
-                
-                Array.from(e.target.files).forEach(file => {
-                    const reader = new FileReader();
-                    
-                    reader.onload = function(event) {
-                        const img = document.createElement('img');
-                        img.src = event.target.result;
-                        img.classList.add('photo-preview', 'rounded-md', 'border', 'border-gray-300');
-                        inspectionPhotoPreviews.appendChild(img);
-                    };
-                    
-                    reader.readAsDataURL(file);
+        // Generate weekly report number
+        function generateWeeklyReportNumber(id, date) {
+            const dateObj = new Date(date);
+            const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
+            return `WR-${dateStr}-${id.toString().padStart(4, '0')}`;
+        }
+
+        // Save observation to Firestore
+        function saveObservation(observation) {
+            db.collection('observations').add(observation)
+                .then(docRef => {
+                    console.log("Observation written with ID: ", docRef.id);
+                    observation.id = docRef.id;
+                    allObservations.unshift(observation);
+                    filteredObservations.unshift(observation);
+                    renderDatabase();
+                    updateDashboardMetrics();
+                    alert('Daily report submitted successfully!');
+                })
+                .catch(error => {
+                    console.error("Error adding observation: ", error);
+                    alert('Error submitting report. Please try again.');
                 });
-            } else {
-                inspectionPhotoPreviewContainer.classList.add('hidden');
-            }
-        });
+        }
+
+        // Save inspection to Firestore
+        function saveInspection(inspection) {
+            db.collection('inspections').add(inspection)
+                .then(docRef => {
+                    console.log("Inspection written with ID: ", docRef.id);
+                    inspection.id = docRef.id;
+                    allInspections.unshift(inspection);
+                    filteredInspections.unshift(inspection);
+                    renderInspectionDatabase();
+                    updateDashboardMetrics();
+                    alert('Inspection report submitted successfully!');
+                })
+                .catch(error => {
+                    console.error("Error adding inspection: ", error);
+                    alert('Error submitting inspection. Please try again.');
+                });
+        }
+
+        // Save weekly report to Firestore
+        function saveWeeklyReport(weeklyReport) {
+            db.collection('weeklyReports').add(weeklyReport)
+                .then(docRef => {
+                    console.log("Weekly report written with ID: ", docRef.id);
+                    weeklyReport.id = docRef.id;
+                    allWeeklyReports.unshift(weeklyReport);
+                    filteredWeeklyReports.unshift(weeklyReport);
+                    renderWeeklyDatabase();
+                    alert('Weekly report submitted successfully!');
+                })
+                .catch(error => {
+                    console.error("Error adding weekly report: ", error);
+                    alert('Error submitting weekly report. Please try again.');
+                });
+        }
 
         // Form submission handlers
         document.getElementById('daily-report-form').addEventListener('submit', function(e) {
@@ -1195,10 +1218,8 @@
             
             // Get form values
             const form = e.target;
-            const newId = allObservations.length > 0 ? Math.max(...allObservations.map(o => o.id)) + 1 : 1;
             const newObservation = {
-                id: newId,
-                observationNumber: generateObservationNumber(newId, form['date-observed'].value),
+                observationNumber: generateObservationNumber(Date.now(), form['date-observed'].value),
                 date: form['date-observed'].value,
                 location: form.location.value,
                 description: form.description.value,
@@ -1209,32 +1230,19 @@
                 photoLink: '',
                 reportedBy: form['reported-by'].value,
                 immediateAction: form['immediate-action'].value,
-                responsiblePerson: form['responsible-person'].value
+                responsiblePerson: form['responsible-person'].value,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            // Add to observations
-            allObservations.unshift(newObservation);
-            filteredObservations.unshift(newObservation);
+            // Save to Firestore
+            saveObservation(newObservation);
             
             // Reset form and update UI
-            alert('Daily report submitted successfully!');
             form.reset();
             photoPreviewContainer.classList.add('hidden');
             
-            // If on database page, refresh the view
-            if (!observationDatabaseSection.classList.contains('hidden')) {
-                currentPage = 1;
-                renderDatabase();
-            }
-            
-            // Update dashboard
-            updateDashboardMetrics();
-            
             // Navigate to dashboard
             navigateToDashboard();
-            
-            // Check for overdue observations
-            checkOverdueObservations();
         });
 
         document.getElementById('inspection-report-form').addEventListener('submit', function(e) {
@@ -1243,10 +1251,8 @@
             // Get form values
             const form = e.target;
             
-            const newId = allInspections.length > 0 ? Math.max(...allInspections.map(o => o.id)) + 1 : 1;
             const newInspection = {
-                id: newId,
-                inspectionNumber: generateInspectionNumber(newId, form['inspection-date'].value),
+                inspectionNumber: generateInspectionNumber(Date.now(), form['inspection-date'].value),
                 date: form['inspection-date'].value,
                 location: form['inspection-location'].value,
                 type: document.querySelector('input[name="inspection-type"]:checked')?.value || 'General',
@@ -1254,27 +1260,17 @@
                 recommendations: form['inspection-recommendations'].value,
                 status: form['inspection-status'].value,
                 inspectedBy: form['inspected-by'].value,
-                photoLink: ''
+                photoLink: '',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            // Add to inspections
-            allInspections.unshift(newInspection);
-            filteredInspections.unshift(newInspection);
+            // Save to Firestore
+            saveInspection(newInspection);
             
             // Reset form and update UI
-            alert('Inspection report submitted successfully!');
             form.reset();
             inspectionPhotoPreviewContainer.classList.add('hidden');
             inspectionPhotoPreviews.innerHTML = '';
-            
-            // If on database page, refresh the view
-            if (!inspectionDatabaseSection.classList.contains('hidden')) {
-                inspectionCurrentPage = 1;
-                renderInspectionDatabase();
-            }
-            
-            // Update dashboard
-            updateDashboardMetrics();
             
             // Navigate to dashboard
             navigateToDashboard();
@@ -1286,10 +1282,8 @@
             // Get form values
             const form = e.target;
             
-            const newId = allWeeklyReports.length > 0 ? Math.max(...allWeeklyReports.map(o => o.id)) + 1 : 1;
             const newWeeklyReport = {
-                id: newId,
-                reportNumber: generateWeeklyReportNumber(newId, form['week-start-date'].value),
+                reportNumber: generateWeeklyReportNumber(Date.now(), form['week-start-date'].value),
                 weekStart: form['week-start-date'].value,
                 weekEnd: form['week-end-date'].value,
                 observations: parseInt(form['observation-count'].value),
@@ -1300,22 +1294,15 @@
                 manhours: parseInt(form['manhours'].value),
                 summary: form['weekly-summary'].value,
                 highlights: form['weekly-highlights'].value,
-                challenges: form['weekly-challenges'].value
+                challenges: form['weekly-challenges'].value,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            // Add to weekly reports
-            allWeeklyReports.unshift(newWeeklyReport);
-            filteredWeeklyReports.unshift(newWeeklyReport);
+            // Save to Firestore
+            saveWeeklyReport(newWeeklyReport);
             
             // Reset form and update UI
-            alert('Weekly report submitted successfully!');
             form.reset();
-            
-            // If on database page, refresh the view
-            if (!weeklyDatabaseSection.classList.contains('hidden')) {
-                weeklyCurrentPage = 1;
-                renderWeeklyDatabase();
-            }
             
             // Navigate to dashboard
             navigateToDashboard();
@@ -1382,19 +1369,30 @@
         });
 
         function addUser(username, password, role, fullname, position, photoUrl) {
-            // Add new user
-            const newUser = { username, password, role, fullname, position, photo: photoUrl };
-            users.push(newUser);
-            
-            // Save to localStorage
-            localStorage.setItem('users', JSON.stringify(users));
-            
-            // Reset form
-            document.getElementById('add-user-form').reset();
-            
-            // Update UI
-            renderUsersList();
-            alert('User added successfully!');
+            // Add new user to Firestore
+            db.collection('users').add({
+                username: username,
+                password: password,
+                role: role,
+                fullname: fullname,
+                position: position,
+                photo: photoUrl
+            }).then(docRef => {
+                console.log("User written with ID: ", docRef.id);
+                // Add to local users array
+                const newUser = { id: docRef.id, username, password, role, fullname, position, photo: photoUrl };
+                users.push(newUser);
+                
+                // Reset form
+                document.getElementById('add-user-form').reset();
+                
+                // Update UI
+                renderUsersList();
+                alert('User added successfully!');
+            }).catch(error => {
+                console.error("Error adding user: ", error);
+                alert('Error adding user. Please try again.');
+            });
         }
 
         function deleteUser(username) {
@@ -1404,50 +1402,22 @@
             }
             
             if (confirm(`Are you sure you want to delete user ${username}?`)) {
-                users = users.filter(u => u.username !== username);
-                localStorage.setItem('users', JSON.stringify(users));
-                renderUsersList();
-                alert('User deleted successfully!');
+                // Find user in local array
+                const userToDelete = users.find(u => u.username === username);
+                if (userToDelete) {
+                    // Delete from Firestore
+                    db.collection('users').doc(userToDelete.id).delete().then(() => {
+                        console.log("User deleted successfully!");
+                        // Remove from local array
+                        users = users.filter(u => u.username !== username);
+                        renderUsersList();
+                        alert('User deleted successfully!');
+                    }).catch(error => {
+                        console.error("Error deleting user: ", error);
+                        alert('Error deleting user. Please try again.');
+                    });
+                }
             }
-        }
-
-        // Observation database
-        let currentPage = 1;
-        const observationsPerPage = 10;
-        let allObservations = [];
-        let filteredObservations = [];
-
-        // Inspection database
-        let inspectionCurrentPage = 1;
-        const inspectionsPerPage = 10;
-        let allInspections = [];
-        let filteredInspections = [];
-
-        // Weekly report database
-        let weeklyCurrentPage = 1;
-        const weeklyPerPage = 10;
-        let allWeeklyReports = [];
-        let filteredWeeklyReports = [];
-
-        // Generate observation number
-        function generateObservationNumber(id, date) {
-            const dateObj = new Date(date);
-            const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
-            return `OBS-${dateStr}-${id.toString().padStart(4, '0')}`;
-        }
-
-        // Generate inspection number
-        function generateInspectionNumber(id, date) {
-            const dateObj = new Date(date);
-            const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
-            return `INS-${dateStr}-${id.toString().padStart(4, '0')}`;
-        }
-
-        // Generate weekly report number
-        function generateWeeklyReportNumber(id, date) {
-            const dateObj = new Date(date);
-            const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
-            return `WR-${dateStr}-${id.toString().padStart(4, '0')}`;
         }
 
         // Observation Database Functions
@@ -1477,8 +1447,8 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${obs.closedDate || 'N/A'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                         ${obs.photoLink ? `<a href="${obs.photoLink}" class="text-blue-600 hover:text-blue-900" download>Photo</a>` : ''}
-                        <button onclick="editObservation(${obs.id})" class="text-blue-600 hover:text-blue-900">Edit</button>
-                        ${currentUser.role === 'admin' ? `<button onclick="deleteObservationDirect(${obs.id})" class="text-red-600 hover:text-red-900">Delete</button>` : ''}
+                        <button onclick="editObservation('${obs.id}')" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        ${currentUser.role === 'admin' ? `<button onclick="deleteObservationDirect('${obs.id}')" class="text-red-600 hover:text-red-900">Delete</button>` : ''}
                     </td>
                 `;
                 
@@ -1491,8 +1461,17 @@
         }
 
         function refreshDatabase() {
-            // In a real app, this would fetch fresh data from the server
-            loadSampleData();
+            // Reload data from Firestore
+            db.collection('observations').orderBy('date', 'desc').get().then(querySnapshot => {
+                allObservations = [];
+                querySnapshot.forEach(doc => {
+                    allObservations.push({ id: doc.id, ...doc.data() });
+                });
+                filteredObservations = [...allObservations];
+                currentPage = 1;
+                renderDatabase();
+                updateDashboardMetrics();
+            });
         }
 
         function nextPage() {
@@ -1565,59 +1544,83 @@
         document.getElementById('edit-observation-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const id = parseInt(document.getElementById('edit-id').value);
+            const id = document.getElementById('edit-id').value;
             const observation = allObservations.find(obs => obs.id === id);
             if (!observation) return;
             
-            observation.date = document.getElementById('edit-date').value;
-            observation.location = document.getElementById('edit-location').value;
-            observation.description = document.getElementById('edit-description').value;
-            observation.correctiveAction = document.getElementById('edit-corrective-action').value;
-            observation.status = document.getElementById('edit-status').value;
-            observation.photoLink = document.getElementById('edit-photo-link').value;
+            const updatedData = {
+                date: document.getElementById('edit-date').value,
+                location: document.getElementById('edit-location').value,
+                description: document.getElementById('edit-description').value,
+                correctiveAction: document.getElementById('edit-corrective-action').value,
+                status: document.getElementById('edit-status').value,
+                photoLink: document.getElementById('edit-photo-link').value
+            };
             
-            if (observation.status === 'closed') {
-                observation.closedDate = document.getElementById('edit-closed-date').value || new Date().toISOString().split('T')[0];
+            if (updatedData.status === 'closed') {
+                updatedData.closedDate = document.getElementById('edit-closed-date').value || new Date().toISOString().split('T')[0];
             } else {
-                observation.closedDate = '';
+                updatedData.closedDate = '';
             }
             
-            closeEditModal();
-            renderDatabase();
-            updateDashboardMetrics();
-            alert('Observation updated successfully!');
-            
-            // Check for overdue observations
-            checkOverdueObservations();
+            // Update in Firestore
+            db.collection('observations').doc(id).update(updatedData)
+                .then(() => {
+                    console.log("Observation updated successfully!");
+                    // Update in local array
+                    Object.assign(observation, updatedData);
+                    closeEditModal();
+                    renderDatabase();
+                    updateDashboardMetrics();
+                    alert('Observation updated successfully!');
+                })
+                .catch(error => {
+                    console.error("Error updating observation: ", error);
+                    alert('Error updating observation. Please try again.');
+                });
         });
 
         function deleteObservation() {
-            const id = parseInt(document.getElementById('edit-id').value);
+            const id = document.getElementById('edit-id').value;
             if (confirm('Are you sure you want to delete this observation?')) {
-                allObservations = allObservations.filter(obs => obs.id !== id);
-                filteredObservations = filteredObservations.filter(obs => obs.id !== id);
-                
-                closeEditModal();
-                renderDatabase();
-                updateDashboardMetrics();
-                alert('Observation deleted successfully!');
-                
-                // Check for overdue observations
-                checkOverdueObservations();
+                // Delete from Firestore
+                db.collection('observations').doc(id).delete()
+                    .then(() => {
+                        console.log("Observation deleted successfully!");
+                        // Remove from local arrays
+                        allObservations = allObservations.filter(obs => obs.id !== id);
+                        filteredObservations = filteredObservations.filter(obs => obs.id !== id);
+                        
+                        closeEditModal();
+                        renderDatabase();
+                        updateDashboardMetrics();
+                        alert('Observation deleted successfully!');
+                    })
+                    .catch(error => {
+                        console.error("Error deleting observation: ", error);
+                        alert('Error deleting observation. Please try again.');
+                    });
             }
         }
 
         function deleteObservationDirect(id) {
             if (confirm('Are you sure you want to delete this observation?')) {
-                allObservations = allObservations.filter(obs => obs.id !== id);
-                filteredObservations = filteredObservations.filter(obs => obs.id !== id);
-                
-                renderDatabase();
-                updateDashboardMetrics();
-                alert('Observation deleted successfully!');
-                
-                // Check for overdue observations
-                checkOverdueObservations();
+                // Delete from Firestore
+                db.collection('observations').doc(id).delete()
+                    .then(() => {
+                        console.log("Observation deleted successfully!");
+                        // Remove from local arrays
+                        allObservations = allObservations.filter(obs => obs.id !== id);
+                        filteredObservations = filteredObservations.filter(obs => obs.id !== id);
+                        
+                        renderDatabase();
+                        updateDashboardMetrics();
+                        alert('Observation deleted successfully!');
+                    })
+                    .catch(error => {
+                        console.error("Error deleting observation: ", error);
+                        alert('Error deleting observation. Please try again.');
+                    });
             }
         }
 
@@ -1687,8 +1690,8 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                         ${ins.photoLink ? `<a href="${ins.photoLink}" class="text-blue-600 hover:text-blue-900" download>Photo</a>` : ''}
-                        <button onclick="editInspection(${ins.id})" class="text-blue-600 hover:text-blue-900">Edit</button>
-                        ${currentUser.role === 'admin' ? `<button onclick="deleteInspection(${ins.id})" class="text-red-600 hover:text-red-900">Delete</button>` : ''}
+                        <button onclick="editInspection('${ins.id}')" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        ${currentUser.role === 'admin' ? `<button onclick="deleteInspection('${ins.id}')" class="text-red-600 hover:text-red-900">Delete</button>` : ''}
                     </td>
                 `;
                 
@@ -1701,8 +1704,17 @@
         }
 
         function refreshInspectionDatabase() {
-            // In a real app, this would fetch fresh data from the server
-            loadSampleData();
+            // Reload data from Firestore
+            db.collection('inspections').orderBy('date', 'desc').get().then(querySnapshot => {
+                allInspections = [];
+                querySnapshot.forEach(doc => {
+                    allInspections.push({ id: doc.id, ...doc.data() });
+                });
+                filteredInspections = [...allInspections];
+                inspectionCurrentPage = 1;
+                renderInspectionDatabase();
+                updateDashboardMetrics();
+            });
         }
 
         function nextInspectionPage() {
@@ -1737,12 +1749,22 @@
 
         function deleteInspection(id) {
             if (confirm('Are you sure you want to delete this inspection?')) {
-                allInspections = allInspections.filter(ins => ins.id !== id);
-                filteredInspections = filteredInspections.filter(ins => ins.id !== id);
-                
-                renderInspectionDatabase();
-                updateDashboardMetrics();
-                alert('Inspection deleted successfully!');
+                // Delete from Firestore
+                db.collection('inspections').doc(id).delete()
+                    .then(() => {
+                        console.log("Inspection deleted successfully!");
+                        // Remove from local arrays
+                        allInspections = allInspections.filter(ins => ins.id !== id);
+                        filteredInspections = filteredInspections.filter(ins => ins.id !== id);
+                        
+                        renderInspectionDatabase();
+                        updateDashboardMetrics();
+                        alert('Inspection deleted successfully!');
+                    })
+                    .catch(error => {
+                        console.error("Error deleting inspection: ", error);
+                        alert('Error deleting inspection. Please try again.');
+                    });
             }
         }
 
@@ -1807,9 +1829,9 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${rep.manpower}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${rep.manhours}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button onclick="viewWeeklyReport(${rep.id})" class="text-blue-600 hover:text-blue-900">View</button>
-                        <button onclick="editWeeklyReport(${rep.id})" class="text-blue-600 hover:text-blue-900">Edit</button>
-                        ${currentUser.role === 'admin' ? `<button onclick="deleteWeeklyReport(${rep.id})" class="text-red-600 hover:text-red-900">Delete</button>` : ''}
+                        <button onclick="viewWeeklyReport('${rep.id}')" class="text-blue-600 hover:text-blue-900">View</button>
+                        <button onclick="editWeeklyReport('${rep.id}')" class="text-blue-600 hover:text-blue-900">Edit</button>
+                        ${currentUser.role === 'admin' ? `<button onclick="deleteWeeklyReport('${rep.id}')" class="text-red-600 hover:text-red-900">Delete</button>` : ''}
                     </td>
                 `;
                 
@@ -1822,8 +1844,16 @@
         }
 
         function refreshWeeklyDatabase() {
-            // In a real app, this would fetch fresh data from the server
-            loadSampleData();
+            // Reload data from Firestore
+            db.collection('weeklyReports').orderBy('weekStart', 'desc').get().then(querySnapshot => {
+                allWeeklyReports = [];
+                querySnapshot.forEach(doc => {
+                    allWeeklyReports.push({ id: doc.id, ...doc.data() });
+                });
+                filteredWeeklyReports = [...allWeeklyReports];
+                weeklyCurrentPage = 1;
+                renderWeeklyDatabase();
+            });
         }
 
         function nextWeeklyPage() {
@@ -1860,11 +1890,21 @@
 
         function deleteWeeklyReport(id) {
             if (confirm('Are you sure you want to delete this weekly report?')) {
-                allWeeklyReports = allWeeklyReports.filter(rep => rep.id !== id);
-                filteredWeeklyReports = filteredWeeklyReports.filter(rep => rep.id !== id);
-                
-                renderWeeklyDatabase();
-                alert('Weekly report deleted successfully!');
+                // Delete from Firestore
+                db.collection('weeklyReports').doc(id).delete()
+                    .then(() => {
+                        console.log("Weekly report deleted successfully!");
+                        // Remove from local arrays
+                        allWeeklyReports = allWeeklyReports.filter(rep => rep.id !== id);
+                        filteredWeeklyReports = filteredWeeklyReports.filter(rep => rep.id !== id);
+                        
+                        renderWeeklyDatabase();
+                        alert('Weekly report deleted successfully!');
+                    })
+                    .catch(error => {
+                        console.error("Error deleting weekly report: ", error);
+                        alert('Error deleting weekly report. Please try again.');
+                    });
             }
         }
 
@@ -2070,6 +2110,144 @@
                 });
             }
         }
+
+        // Status change handler for daily report
+        statusSelect.addEventListener('change', function() {
+            if (this.value === 'closed') {
+                actualCorrectiveActionContainer.classList.remove('hidden');
+                dateClosedContainer.classList.remove('hidden');
+            } else {
+                actualCorrectiveActionContainer.classList.add('hidden');
+                dateClosedContainer.classList.add('hidden');
+            }
+        });
+
+        // Photo upload preview for daily report
+        fileUpload.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    photoPreview.src = event.target.result;
+                    photoPreviewContainer.classList.remove('hidden');
+                };
+                
+                reader.readAsDataURL(file);
+            } else {
+                photoPreviewContainer.classList.add('hidden');
+            }
+        });
+
+        // Multiple photo upload preview for inspection report
+        inspectionFileUpload.addEventListener('change', function(e) {
+            inspectionPhotoPreviews.innerHTML = '';
+            
+            if (e.target.files.length > 0) {
+                inspectionPhotoPreviewContainer.classList.remove('hidden');
+                
+                Array.from(e.target.files).forEach(file => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(event) {
+                        const img = document.createElement('img');
+                        img.src = event.target.result;
+                        img.classList.add('photo-preview', 'rounded-md', 'border', 'border-gray-300');
+                        inspectionPhotoPreviews.appendChild(img);
+                    };
+                    
+                    reader.readAsDataURL(file);
+                });
+            } else {
+                inspectionPhotoPreviewContainer.classList.add('hidden');
+            }
+        });
+
+        // Sidebar toggle for desktop
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('collapsed');
+            contentArea.classList.toggle('expanded');
+        });
+
+        // Mobile menu toggle
+        mobileMenuBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('open');
+        });
+
+        // Notifications dropdown
+        notificationsBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            notificationsDropdown.classList.toggle('hidden');
+        });
+
+        // Close notifications when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!notificationsBtn.contains(e.target) && !notificationsDropdown.contains(e.target)) {
+                notificationsDropdown.classList.add('hidden');
+            }
+        });
+
+        // Navigation menu functionality
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = this.getAttribute('href');
+                
+                // Hide all sections
+                dashboardSection.classList.add('hidden');
+                dailyReportSection.classList.add('hidden');
+                inspectionReportSection.classList.add('hidden');
+                weeklyReportSection.classList.add('hidden');
+                observationDatabaseSection.classList.add('hidden');
+                inspectionDatabaseSection.classList.add('hidden');
+                weeklyDatabaseSection.classList.add('hidden');
+                adminPanelSection.classList.add('hidden');
+                
+                // Show target section
+                if (target === '#daily-report') {
+                    dailyReportSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Daily Observation Report';
+                } else if (target === '#inspection-report') {
+                    inspectionReportSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Inspection Report';
+                } else if (target === '#weekly-report') {
+                    weeklyReportSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Weekly Safety Report';
+                } else if (target === '#observation-database') {
+                    observationDatabaseSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Observation Database';
+                    // Refresh the database when navigating to it
+                    currentPage = 1;
+                    renderDatabase();
+                } else if (target === '#inspection-database') {
+                    inspectionDatabaseSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Inspection Database';
+                    // Refresh the database when navigating to it
+                    inspectionCurrentPage = 1;
+                    renderInspectionDatabase();
+                } else if (target === '#weekly-database') {
+                    weeklyDatabaseSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Weekly Report Database';
+                    // Refresh the database when navigating to it
+                    weeklyCurrentPage = 1;
+                    renderWeeklyDatabase();
+                } else if (target === '#admin-panel') {
+                    adminPanelSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Admin Panel';
+                } else {
+                    dashboardSection.classList.remove('hidden');
+                    pageTitle.textContent = 'Dashboard';
+                }
+                
+                // Close mobile menu if open
+                if (sidebar.classList.contains('open')) {
+                    sidebar.classList.remove('open');
+                }
+                
+                // Close notifications dropdown
+                notificationsDropdown.classList.add('hidden');
+            });
+        });
 
         // Initialize the app when the page loads
         document.addEventListener('DOMContentLoaded', function() {
